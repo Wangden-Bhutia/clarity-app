@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Cormorant+Garamond:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 0.5rem;
+  --background: 90 15% 92%;
+  --foreground: 220 15% 25%;
+  --card: 45 30% 98%;
+  --card-foreground: 220 15% 25%;
+  --card-border: 45 15% 90%;
+  --popover: 45 30% 98%;
+  --popover-foreground: 220 15% 25%;
+  --popover-border: 45 15% 90%;
+  --primary: 130 12% 45%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 15% 90%;
+  --secondary-foreground: 220 15% 25%;
+  --muted: 40 15% 92%;
+  --muted-foreground: 220 10% 45%;
+  --accent: 40 20% 90%;
+  --accent-foreground: 220 15% 25%;
+  --destructive: 0 35% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 45 15% 88%;
+  --input: 45 15% 88%;
+  --ring: 130 12% 45%;
+}
+
+.dark {
+  --background: 220 10% 12%;
+  --foreground: 45 20% 90%;
+  --card: 220 10% 15%;
+  --card-foreground: 45 20% 90%;
+  --card-border: 220 10% 20%;
+  --popover: 220 10% 15%;
+  --popover-foreground: 45 20% 90%;
+  --popover-border: 220 10% 20%;
+  --primary: 130 10% 55%;
+  --primary-foreground: 220 10% 12%;
+  --secondary: 220 10% 20%;
+  --secondary-foreground: 45 20% 90%;
+  --muted: 220 10% 18%;
+  --muted-foreground: 220 5% 65%;
+  --accent: 220 10% 22%;
+  --accent-foreground: 45 20% 90%;
+  --destructive: 0 30% 45%;
+  --destructive-foreground: 45 20% 90%;
+  --border: 220 10% 22%;
+  --input: 220 10% 22%;
+  --ring: 130 10% 55%;
+}
+
+@layer base {
+  html {
+    @apply bg-background;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground transition-colors duration-1000;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-medium tracking-wide;
+  }
+}

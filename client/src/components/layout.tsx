@@ -55,7 +55,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       
-      <main className="flex-1 w-full max-w-5xl mx-auto px-6 md:px-12 pb-24 flex flex-col animate-slide-up-slow">
+      <main className="flex-1 w-full px-6 md:px-12 pb-24 flex flex-col animate-slide-up-slow">
         {children}
       </main>
       

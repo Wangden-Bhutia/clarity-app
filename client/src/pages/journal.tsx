@@ -20,6 +20,12 @@ export default function Journal() {
 
   let insight: string | null = null;
 
+  // --- Review-ready count ---
+  const nowTs = Date.now();
+  const reviewReadyCount = decisions.filter((d: any) =>
+    d.outcomeStatus === "pending" && d.reviewDate && d.reviewDate <= nowTs
+  ).length;
+
   if (hasEnoughData) {
 
     // --- Early insight (2–4 decisions) ---
@@ -196,11 +202,13 @@ export default function Journal() {
           Profile
         </Link>
       </header>
-      <div className="mt-2 px-4 py-3 rounded-2xl bg-secondary/30 border border-border/50">
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Capture a decision while it's fresh — clarity comes later.
-        </p>
-      </div>
+      {reviewReadyCount === 0 && (
+        <div className="mt-2 px-4 py-3 rounded-2xl bg-secondary/30 border border-border/50">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Capture a decision while it's fresh — clarity comes later.
+          </p>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -250,6 +258,17 @@ export default function Journal() {
         ))}
       </div>
 
+      {reviewReadyCount > 0 && (
+        <div
+          onClick={() => setStatusFilter("review")}
+          className="mt-2 px-4 py-3 rounded-2xl bg-secondary/30 border border-border/50 cursor-pointer active:scale-[0.98] transition-all"
+        >
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {reviewReadyCount} decision{reviewReadyCount > 1 ? 's are' : ' is'} ready for review
+          </p>
+        </div>
+      )}
+
       {hasEnoughData && insight && (
         <div className="mt-2 px-4 py-3 rounded-2xl bg-primary/5 border border-primary/10">
           <p className="text-xs text-primary/80 font-light leading-relaxed">
@@ -277,9 +296,20 @@ export default function Journal() {
       <div className="space-y-4">
         {filteredDecisions.map((d) => (
           <Link key={d.id} href={`/decision/${d.id}`}>
-            <div className="p-4 border rounded-2xl">
+            <div
+              className={`p-4 border rounded-2xl transition-all ${
+                d.outcomeStatus === "pending" && d.reviewDate && d.reviewDate <= Date.now()
+                  ? "bg-primary/5 border-primary/20 shadow-sm"
+                  : "bg-background"
+              }`}
+            >
               <div className="flex justify-between">
-                <h2>{d.title}</h2>
+                <div className="flex items-center gap-2">
+                  {d.outcomeStatus === "pending" && d.reviewDate && d.reviewDate <= Date.now() && (
+                    <span className="inline-block w-2 h-2 rounded-full bg-primary" />
+                  )}
+                  <h2>{d.title}</h2>
+                </div>
                 {d.outcomeStatus === "recorded" ? (
                   <CheckCircle2 size={18} />
                 ) : (

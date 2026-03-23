@@ -5,7 +5,7 @@
 
 :root {
   --radius: 0.5rem;
-  --background: 90 15% 92%;
+  --background: 60 7% 96%;
   --foreground: 220 15% 25%;
   --card: 45 30% 98%;
   --card-foreground: 220 15% 25%;
@@ -65,4 +65,35 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif font-medium tracking-wide;
   }
+}
+
+/* --- Interaction Feedback --- */
+
+/* Smooth transitions globally */
+* {
+  transition: background-color 0.2s ease,
+              color 0.2s ease,
+              border-color 0.2s ease,
+              transform 0.12s ease,
+              opacity 0.2s ease;
+}
+
+/* Tap/press feedback */
+button, .tap {
+  transition: transform 0.12s ease, opacity 0.2s ease;
+}
+
+button:active, .tap:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+/* Remove harsh tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
 }

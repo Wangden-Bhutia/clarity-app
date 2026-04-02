@@ -3,92 +3,47 @@ import { ArrowRight } from "lucide-react";
 import { UserProfile } from "@/lib/stats";
 
 interface TruthRevealProps {
-  prediction: number;
   occurred: boolean;
   profile: UserProfile;
   onContinue: () => void;
 }
 
-const generateTruthMessage = (prediction: number, occurred: boolean, profile: UserProfile) => {
+const generateTruthMessage = (occurred: boolean, profile: UserProfile) => {
   const getRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
-  
-  const usePatternMessage = profile !== "insufficient_data" && Math.random() < 0.35; // 35% chance
-  
-  const isOverestimationExample = prediction >= 60 && !occurred;
-  const isUnderestimationExample = prediction <= 40 && occurred;
-  const isAccurateExample = (prediction >= 60 && occurred) || (prediction <= 40 && !occurred);
-
-  if (usePatternMessage) {
-    if (profile === "overestimator" && isOverestimationExample) {
-      return getRandom([
-        "This is becoming a pattern. You expect worse than what happens.",
-        "Again, your prediction overshot reality.",
-        "You keep leaning toward worst-case. Reality doesn't."
-      ]);
-    } else if (profile === "underestimator" && isUnderestimationExample) {
-      return getRandom([
-        "You tend to miss risks. This is one of them.",
-        "You didn't see this coming. That's happening more often.",
-        "Your predictions are softer than reality."
-      ]);
-    } else if (profile === "balanced" && isAccurateExample) {
-      return getRandom([
-        "Your predictions are lining up with reality.",
-        "You're reading situations clearly.",
-        "Your judgment is holding steady."
-      ]);
-    }
-  }
 
   if (!occurred) {
-    if (prediction >= 60) {
-      return getRandom([
-        "You were fairly certain this would go wrong. It didn't.",
-        "Your mind predicted trouble. Reality disagreed.",
-        "You expected the worst. It never arrived.",
-        "The fear was high, but the threat wasn't real.",
-        "Your anxiety wrote a story that didn't play out."
-      ]);
-    } else if (prediction >= 30) {
-      return getRandom([
-        "You leaned toward this going badly. It didn't.",
-        "That concern didn't play out.",
-        "You braced for friction. Reality was quiet.",
-        "The expected difficulty never materialized."
-      ]);
-    } else {
-      return getRandom([
-        "You stayed grounded here. That held up.",
-        "Your expectation matched reality.",
-        "You correctly saw this as low risk.",
-        "Your calm assessment proved accurate."
-      ]);
-    }
+    return getRandom([
+      "You were concerned about this. It didn’t happen.",
+      "Your fear didn’t materialize.",
+      "You expected trouble. It stayed quiet.",
+      "The situation turned out calmer than expected."
+    ]);
   } else {
-    if (prediction >= 60) {
-      return getRandom([
-        "You saw this coming. Your read was accurate.",
-        "Your concern matched reality.",
-        "Your intuition about the risk was correct.",
-        "You anticipated the difficulty correctly."
-      ]);
-    } else {
-      return getRandom([
-        "You didn't expect this. It still happened.",
-        "This one slipped past your prediction.",
-        "Reality was harsher than your assessment.",
-        "An outcome you thought was unlikely materialized."
-      ]);
-    }
+    return getRandom([
+      "Something you were concerned about did happen.",
+      "Your concern matched reality here.",
+      "This one didn’t go as hoped.",
+      "The risk you sensed showed up."
+    ]);
   }
 };
 
-export default function TruthReveal({ prediction, occurred, profile, onContinue }: TruthRevealProps) {
+export default function TruthReveal({ occurred, profile, onContinue }: TruthRevealProps) {
   const [message, setMessage] = useState("");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setMessage(generateTruthMessage(prediction, occurred, profile));
-  }, [prediction, occurred, profile]);
+    const msg = generateTruthMessage(occurred, profile);
+    setMessage("");
+
+    const timer1 = setTimeout(() => setMessage(msg), 300);
+    const timer2 = setTimeout(() => setReady(true), 900);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [occurred, profile]);
 
   const patternLabels: Record<string, string> = {
     "overestimator": "You tend to overestimate outcomes",
@@ -96,27 +51,21 @@ export default function TruthReveal({ prediction, occurred, profile, onContinue 
     "balanced": "You are well calibrated"
   };
 
-  const isOverestimationExample = prediction >= 60 && !occurred;
-  const isUnderestimationExample = prediction <= 40 && occurred;
-  const isAccurateExample = (prediction >= 60 && occurred) || (prediction <= 40 && !occurred);
-  
-  const showPatternLabel = profile !== "insufficient_data" && (
-    (profile === "overestimator" && isOverestimationExample) ||
-    (profile === "underestimator" && isUnderestimationExample) ||
-    (profile === "balanced" && isAccurateExample)
-  );
+  const showPatternLabel = profile !== "insufficient_data";
 
   return (
     <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="max-w-md w-full bg-card border border-border p-8 md:p-12 rounded-3xl shadow-xl animate-slide-up-slow text-center">
         <span className="text-[10px] uppercase tracking-widest text-primary/70 mb-8 block">Reality Check</span>
         
-        <h2 className="text-2xl md:text-3xl font-serif text-foreground leading-tight mb-8">
-          "{message}"
+        <h2 className="text-3xl md:text-4xl font-serif text-foreground leading-tight mb-10 transition-opacity duration-500">
+          {message ? `"${message}"` : "..."}
         </h2>
+        <p className="text-xs text-muted-foreground/60 italic mb-10">
+          Take a moment to notice this.
+        </p>
         
-        <div className="space-y-2 mb-12 pt-8 border-t border-border/50 text-sm font-light text-muted-foreground">
-          <p>Your prediction: <span className="font-mono text-foreground/80">{prediction}%</span></p>
+        <div className="space-y-2 mb-12 pt-6 border-t border-border/30 text-sm font-light text-muted-foreground">
           <p>Outcome: <span className="text-foreground/80">{occurred ? "Happened" : "Did not happen"}</span></p>
           
           {showPatternLabel && (
@@ -129,7 +78,12 @@ export default function TruthReveal({ prediction, occurred, profile, onContinue 
 
         <button 
           onClick={onContinue}
-          className="w-full py-4 rounded-full bg-foreground text-background font-medium tracking-widest uppercase text-sm hover:bg-foreground/90 transition-all flex items-center justify-center gap-2"
+          disabled={!ready}
+          className={`w-full py-4 rounded-full font-medium tracking-widest uppercase text-sm transition-all flex items-center justify-center gap-2 ${
+            ready 
+              ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+              : "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"
+          }`}
         >
           Continue <ArrowRight size={16} />
         </button>

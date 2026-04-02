@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Home, Book, Clock, Settings, PenTool } from "lucide-react";
+import { Moon, Sun, Home, Book, Settings } from "lucide-react";
 import { db } from "@/lib/db";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -32,67 +32,53 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors duration-1000">
-      <header className="py-6 px-8 md:px-12 flex justify-between items-center bg-transparent z-10 animate-fade-in-slow">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
+
+      <header className="py-6 px-8 md:px-12 flex justify-between items-center">
         <Link href="/">
-          <a className="font-serif text-2xl tracking-widest text-foreground/80 hover:text-foreground transition-colors cursor-pointer">
+          <a className="font-serif text-2xl tracking-widest text-primary/90">
             Clarity
           </a>
         </Link>
-        <div className="flex items-center gap-3 md:gap-4">
-          <div className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1 rounded-full bg-secondary/30 text-[9px] md:text-[10px] tracking-widest text-muted-foreground border border-border whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary/70"></span>
-            <span>A StillMind Labs creation</span>
-          </div>
-          <button 
-            onClick={toggleTheme} 
-            className="text-foreground/60 hover:text-foreground transition-colors p-2 rounded-full hover:bg-foreground/5 shrink-0"
-            data-testid="button-toggle-theme"
-            aria-label="Toggle theme"
-          >
-            {theme === 'light' ? <Moon size={20} strokeWidth={1.5} /> : <Sun size={20} strokeWidth={1.5} />}
-          </button>
-        </div>
+
+        <button onClick={toggleTheme} className="p-2 rounded-full">
+          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+        </button>
       </header>
-      
-      <main className="flex-1 w-full px-6 md:px-12 pb-24 flex flex-col animate-slide-up-slow">
-        {children}
+
+      <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 md:px-12 pb-24">
+          {children}
+        </div>
       </main>
-      
-      <nav className="fixed bottom-0 left-0 w-full bg-background/80 backdrop-blur-md border-t border-border z-50">
-        <div className="max-w-md mx-auto flex justify-around items-center p-4">
+
+      <nav className="fixed bottom-0 left-0 w-full border-t border-border bg-background">
+        <div className="max-w-md mx-auto flex justify-around p-4">
+
           <Link href="/">
-            <a className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${location === '/' ? 'text-primary' : 'text-foreground/60 hover:text-foreground/90 hover:bg-foreground/5'}`}>
-              <Home size={20} strokeWidth={location === '/' ? 2 : 1.5} />
-              <span className="text-[10px] tracking-wider uppercase">Home</span>
+            <a className={`flex flex-col items-center ${location === '/' ? 'text-primary' : ''}`}>
+              <Home size={20} />
+              <span className="text-[10px]">Home</span>
             </a>
           </Link>
-          <Link href="/flow">
-            <a className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${location === '/flow' ? 'text-primary' : 'text-foreground/60 hover:text-foreground/90 hover:bg-foreground/5'}`}>
-              <PenTool size={20} strokeWidth={location === '/flow' ? 2 : 1.5} />
-              <span className="text-[10px] tracking-wider uppercase">Reflect</span>
-            </a>
-          </Link>
+
           <Link href="/journal">
-            <a className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${location === '/journal' ? 'text-primary' : 'text-foreground/60 hover:text-foreground/90 hover:bg-foreground/5'}`}>
-              <Book size={20} strokeWidth={location === '/journal' ? 2 : 1.5} />
-              <span className="text-[10px] tracking-wider uppercase">Journal</span>
+            <a className={`flex flex-col items-center ${location === '/journal' ? 'text-primary' : ''}`}>
+              <Book size={20} />
+              <span className="text-[10px]">Journal</span>
             </a>
           </Link>
-          <Link href="/timeline">
-            <a className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${location === '/timeline' ? 'text-primary' : 'text-foreground/60 hover:text-foreground/90 hover:bg-foreground/5'}`}>
-              <Clock size={20} strokeWidth={location === '/timeline' ? 2 : 1.5} />
-              <span className="text-[10px] tracking-wider uppercase">Timeline</span>
-            </a>
-          </Link>
+
           <Link href="/settings">
-            <a className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${location === '/settings' ? 'text-primary' : 'text-foreground/60 hover:text-foreground/90 hover:bg-foreground/5'}`}>
-              <Settings size={20} strokeWidth={location === '/settings' ? 2 : 1.5} />
-              <span className="text-[10px] tracking-wider uppercase">Settings</span>
+            <a className={`flex flex-col items-center ${location === '/settings' ? 'text-primary' : ''}`}>
+              <Settings size={20} />
+              <span className="text-[10px]">Settings</span>
             </a>
           </Link>
+
         </div>
       </nav>
+
     </div>
   );
 }

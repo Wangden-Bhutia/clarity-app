@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react";
-import { useLocation, Link } from "wouter";
-import { ArrowLeft, ArrowRight, Save, LayoutTemplate, Zap, Clock, ShieldAlert } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { ArrowLeft } from "lucide-react";
 import { db, Decision } from "@/lib/db";
 import { useToast } from "@/hooks/use-toast";
-import { getPreDecisionNudge } from "@/lib/nudge";
+// removed unused nudge
 
 const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
@@ -12,7 +12,43 @@ type Framework = 'standard' | '10-10-10' | 'inversion' | 'fear-setting';
 export default function FrameworkFlow() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [step, setStep] = useState(0);
+  const [category, setCategory] = useState("");
+  const [historyPatterns, setHistoryPatterns] = useState<{
+    worries: string[],
+    guts: string[],
+    leanings: string[]
+  }>({ worries: [], guts: [], leanings: [] });
+
+  useEffect(() => {
+    (async () => {
+      const past = await db.getAllDecisions();
+
+      const worries = past
+        .map(d => d.worstOutcome)
+        .filter((v): v is string => Boolean(v));
+      const guts = past
+        .map(d => d.gutFeeling)
+        .filter((v): v is string => Boolean(v));
+      const leanings = past
+        .map(d => d.chosenAction)
+        .filter((v): v is string => Boolean(v));
+
+      const getTop = (arr: string[]) => {
+        const freq: Record<string, number> = {};
+        arr.forEach(a => freq[a] = (freq[a] || 0) + 1);
+        return Object.entries(freq)
+          .sort((a,b) => b[1] - a[1])
+          .map(([k]) => k)
+          .slice(0, 2);
+      };
+
+      setHistoryPatterns({
+        worries: getTop(worries),
+        guts: getTop(guts),
+        leanings: getTop(leanings)
+      });
+    })();
+  }, []);
   const [selectedFramework, setSelectedFramework] = useState<Framework>('standard');
   
   const [formData, setFormData] = useState({
@@ -37,21 +73,20 @@ export default function FrameworkFlow() {
     confidenceRating: 5
   });
 
-  // Keep a single reference to the nudge
-  const nudgeMessage = useMemo(() => getPreDecisionNudge(), []);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      return updated;
+    });
   };
 
   const handleFrameworkSelect = (fw: Framework) => {
     setSelectedFramework(fw);
-    setStep(1);
   };
 
-  const handleNext = () => setStep(prev => prev + 1);
-  const handleBack = () => setStep(prev => prev - 1);
 
   const handleSave = async () => {
     if (!formData.decisionDescription) return;
@@ -92,19 +127,67 @@ export default function FrameworkFlow() {
         hopes,
         gutFeeling,
         recoveryPlan,
-        chosenAction: formData.chosenAction || "To be determined...",
+        chosenAction: formData.chosenAction,
         confidenceRating: formData.confidenceRating,
         date: Date.now(),
         outcomeStatus: 'pending'
       };
 
       await db.saveDecision(newDecision);
-      
+
+      // --- Fetch recent history for pattern awareness ---
+      const past = await db.getAllDecisions();
+      const recent = past.slice(0, 5);
+
+      const sameFearCount = recent.filter(
+        (d: any) =>
+          d.worstOutcome &&
+          formData.worstCase &&
+          d.worstOutcome.toLowerCase().includes(formData.worstCase.toLowerCase())
+      ).length;
+
+      // --- Varied instant insights ---
+      const templatesBoth = [
+        (w: string, g: string) => `You expect "${w}" — yet you’re pulled toward "${g}". Notice the gap.`,
+        (w: string, g: string) => `Fear says "${w}", instinct says "${g}". Which one usually proves right?`,
+        (w: string, g: string) => `You’re weighing "${w}" against "${g}". Track what actually happens.`,
+      ];
+
+      const templatesWorst = [
+        (w: string) => `You’re anticipating "${w}". Keep an eye on how often this occurs.`,
+        (w: string) => `Noting "${w}" as worst case. Reality may be kinder than this.`,
+        (w: string) => `You named "${w}". Check back later—does it unfold this way?`,
+      ];
+
+      const templatesGeneric = [
+        () => `Captured. Return later and compare expectation vs reality.`,
+        () => `Logged. This becomes data for your future decisions.`,
+        () => `Noted. Patterns emerge when you revisit outcomes.`,
+      ];
+
+      // deterministic pick (based on description length)
+      const pick = (arr: any[]) => arr[Math.abs((formData.decisionDescription || "").length) % arr.length];
+
+      let insight = "";
+
+      if (formData.worstCase && formData.gutFeeling) {
+        insight = pick(templatesBoth)(formData.worstCase, formData.gutFeeling);
+      } else if (formData.worstCase) {
+        insight = pick(templatesWorst)(formData.worstCase);
+      } else {
+        insight = pick(templatesGeneric)();
+      }
+
+      // --- Add pattern awareness layer ---
+      if (sameFearCount >= 2 && formData.worstCase) {
+        insight += ` This concern has appeared ${sameFearCount} times recently.`;
+      }
+
       toast({
-        title: "Decision Saved",
-        description: "Your reflection has been recorded.",
+        title: "Saved",
+        description: insight,
       });
-      
+
       setLocation(`/decision/${newDecision.id}`);
     } catch (error) {
       console.error("Error saving decision:", error);
@@ -116,286 +199,310 @@ export default function FrameworkFlow() {
     }
   };
 
+  const worryMap: Record<string, string[]> = {
+    "Career move": [
+      "Making the wrong choice",
+      "Career stagnation",
+      "Workplace conflict",
+      "Losing opportunity"
+    ],
+    "Relationship decision": [
+      "Regret later",
+      "Hurting someone",
+      "Being alone",
+      "Making a mistake"
+    ],
+    "Money decision": [
+      "Losing money",
+      "Bad investment",
+      "Financial instability",
+      "Unexpected loss"
+    ],
+    "Health decision": [
+      "Making it worse",
+      "Wrong treatment",
+      "Long-term impact",
+      "Uncertainty"
+    ],
+    "Something unclear": [
+      "Confusion",
+      "Lack of clarity",
+      "Overthinking",
+      "Fear of unknown"
+    ]
+  };
+
+  const gutMap: Record<string, string[]> = {
+    "Career move": [
+      "Growth opportunity",
+      "Long-term potential",
+      "Feels aligned",
+      "Better environment"
+    ],
+    "Relationship decision": [
+      "Emotional connection",
+      "Peace of mind",
+      "Feels right",
+      "Mutual understanding"
+    ],
+    "Money decision": [
+      "Financial security",
+      "Good opportunity",
+      "Smart move",
+      "Long-term benefit"
+    ],
+    "Health decision": [
+      "Better well-being",
+      "Peace of mind",
+      "Feels safe",
+      "Long-term health"
+    ],
+    "Something unclear": [
+      "Feels right",
+      "Less stress",
+      "Curiosity",
+      "Inner clarity"
+    ]
+  };
+
+  const leaningMap: Record<string, string[]> = {
+    "Career move": [
+      "Leaning toward it",
+      "Holding for better option",
+      "Wait and evaluate",
+      "Need more clarity"
+    ],
+    "Relationship decision": [
+      "Leaning toward it",
+      "Leaning away",
+      "Wait and reflect",
+      "Still unsure"
+    ],
+    "Money decision": [
+      "Proceed cautiously",
+      "Hold off",
+      "Wait and see",
+      "Need more data"
+    ],
+    "Health decision": [
+      "Proceed with care",
+      "Delay decision",
+      "Seek more advice",
+      "Still unsure"
+    ],
+    "Something unclear": [
+      "Leaning toward it",
+      "Leaning against it",
+      "Wait and see",
+      "Still unsure"
+    ]
+  };
+
+  // Helper for smarter chip blending (context + history, balanced)
+  const getSmartChips = (base: string[], history: string[]) => {
+    const uniqueHistory = history.filter(h => !base.includes(h));
+
+    const result: string[] = [];
+
+    // Take 2 strong contextual (base)
+    result.push(...base.slice(0, 2));
+
+    // Add up to 2 from history
+    result.push(...uniqueHistory.slice(0, 2));
+
+    // Fill remaining from base
+    for (const item of base) {
+      if (result.length >= 4) break;
+      if (!result.includes(item)) {
+        result.push(item);
+      }
+    }
+
+    return result.slice(0, 4);
+  };
+
   return (
-    <div className="flex flex-col gap-8 py-8 max-w-2xl mx-auto w-full animate-fade-in-slow min-h-[70vh]">
+    <div className="flex flex-col gap-8 py-8 max-w-2xl mx-auto w-full animate-fade-in-slow pb-32">
+      
       <div className="flex items-center justify-between mb-4 text-sm uppercase tracking-widest text-muted-foreground">
         <button 
-          onClick={step === 0 ? () => setLocation('/') : handleBack}
+          onClick={() => setLocation('/')}
           className="flex items-center gap-2 hover:text-foreground transition-colors"
         >
           <ArrowLeft size={16} /> Back
         </button>
-        <span className="font-mono text-xs bg-secondary/50 px-3 py-1 rounded-full">
-          {step === 0 ? "Choose Framework" : "Step " + step}
-        </span>
       </div>
 
-      {step === 0 && (
-        <div className="space-y-8 animate-fade-in">
-          <header className="mb-8">
-            <h2 className="text-3xl md:text-4xl font-serif mb-4">Choose a Thinking Tool</h2>
-            <p className="text-muted-foreground font-light text-lg">Different decisions require different lenses. How would you like to think about this?</p>
-          </header>
+      <div className="space-y-8">
+        
+        <h2 className="text-3xl md:text-4xl font-serif">
+          What decision are you facing?
+        </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button 
-              onClick={() => handleFrameworkSelect('standard')}
-              className="text-left p-6 rounded-3xl bg-card border border-border hover:border-primary/50 transition-all hover:shadow-md group"
+        {/* Quick chips */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            "Career move",
+            "Relationship decision",
+            "Money decision",
+            "Health decision",
+            "Something unclear"
+          ].map((chip) => (
+            <button
+              key={chip}
+              onClick={() => {
+                setCategory(chip);
+                setFormData((prev) => ({
+                  ...prev,
+                  decisionDescription: chip
+                }));
+              }}
+              className={`px-4 py-2 rounded-full text-sm border transition ${
+                formData.decisionDescription === chip
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary/50 border-border hover:bg-primary/10"
+              }`}
             >
-              <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center mb-4 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                <LayoutTemplate size={20} />
-              </div>
-              <h3 className="font-serif text-xl mb-2">Deep Reflection</h3>
-              <p className="text-sm font-light text-muted-foreground">The classic Clarity flow. Weigh options, fears, and hopes in a balanced way.</p>
+              {chip}
             </button>
-
-            <button 
-              onClick={() => setLocation('/quick-flow')}
-              className="text-left p-6 rounded-3xl bg-card border border-border hover:border-primary/50 transition-all hover:shadow-md group"
-            >
-              <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center mb-4 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                <Zap size={20} />
-              </div>
-              <h3 className="font-serif text-xl mb-2">Quick Log</h3>
-              <p className="text-sm font-light text-muted-foreground">Short on time? Just log the decision and your worst fear. Fill the rest later.</p>
-            </button>
-
-            <button 
-              onClick={() => handleFrameworkSelect('10-10-10')}
-              className="text-left p-6 rounded-3xl bg-card border border-border hover:border-primary/50 transition-all hover:shadow-md group"
-            >
-              <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center mb-4 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                <Clock size={20} />
-              </div>
-              <h3 className="font-serif text-xl mb-2">10-10-10 Rule</h3>
-              <p className="text-sm font-light text-muted-foreground">Best for emotional decisions. How will you feel about this in 10 days, 10 months, and 10 years?</p>
-            </button>
-
-            <button 
-              onClick={() => handleFrameworkSelect('fear-setting')}
-              className="text-left p-6 rounded-3xl bg-card border border-border hover:border-primary/50 transition-all hover:shadow-md group"
-            >
-              <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center mb-4 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                <ShieldAlert size={20} />
-              </div>
-              <h3 className="font-serif text-xl mb-2">Fear-Setting</h3>
-              <p className="text-sm font-light text-muted-foreground">Best for risky choices. Define the nightmare, how to prevent it, and how to repair it.</p>
-            </button>
-          </div>
+          ))}
         </div>
-      )}
 
-      {step === 1 && (
-        <div className="space-y-8 animate-fade-in">
-          <h2 className="text-3xl md:text-4xl font-serif">What decision are you facing right now?</h2>
+        <textarea 
+          name="decisionDescription"
+          value={formData.decisionDescription}
+          onChange={handleChange}
+          placeholder="Describe it briefly..."
+          className="w-full p-6 rounded-2xl bg-card border border-border outline-none min-h-[140px] text-base"
+        />
+
+        <div>
+          <h3 className="text-lg font-medium mb-2">What’s the main worry here?</h3>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {getSmartChips(
+              worryMap[category] || [
+                "Making the wrong choice",
+                "Regret later",
+                "Losing money"
+              ],
+              historyPatterns.worries
+            ).map((chip) => (
+              <button
+                key={chip}
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    worstCase: chip
+                  }))
+                }
+                className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                  formData.worstCase === chip
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/50 border-border hover:bg-primary/10"
+                }`}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
           <textarea 
-            name="decisionDescription"
-            value={formData.decisionDescription}
+            name="worstCase"
+            value={formData.worstCase}
             onChange={handleChange}
-            placeholder="Briefly describe the situation..."
-            className="w-full p-6 rounded-3xl bg-card border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all min-h-[200px] resize-none text-xl font-light"
-            autoFocus
-          ></textarea>
-          <div className="flex justify-end">
-            <button 
-              onClick={selectedFramework === 'standard' ? () => setLocation('/flow') : handleNext}
-              disabled={!formData.decisionDescription.trim()}
-              className="px-8 py-4 rounded-full bg-foreground text-background font-medium tracking-widest uppercase text-sm hover:bg-foreground/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              Next <ArrowRight size={16} />
-            </button>
-          </div>
+            placeholder="Worst case..."
+            className="w-full p-5 rounded-2xl bg-card border border-border outline-none min-h-[100px]"
+          />
         </div>
-      )}
 
-      {/* --- 10-10-10 FRAMEWORK --- */}
-      {selectedFramework === '10-10-10' && step === 2 && (
-        <div className="space-y-8 animate-fade-in">
-          <header className="mb-8">
-            <span className="text-xs uppercase tracking-widest text-primary mb-2 block">10-10-10 Rule</span>
-            <h2 className="text-3xl md:text-4xl font-serif">Time travel.</h2>
-            <p className="text-muted-foreground font-light mt-2">How will you feel about this choice over time?</p>
-          </header>
-          
-          <div className="space-y-6">
-            <div>
-              <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2 mb-2 block">In 10 Days...</label>
-              <textarea 
-                name="tenDays"
-                value={formData.tenDays}
-                onChange={handleChange}
-                placeholder="What will the immediate aftermath feel like?"
-                className="w-full p-4 rounded-2xl bg-secondary/30 border border-border focus:border-primary/50 outline-none transition-all min-h-[100px] resize-none font-light"
-              ></textarea>
-            </div>
-            <div>
-              <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2 mb-2 block">In 10 Months...</label>
-              <textarea 
-                name="tenMonths"
-                value={formData.tenMonths}
-                onChange={handleChange}
-                placeholder="How will this look in hindsight?"
-                className="w-full p-4 rounded-2xl bg-secondary/30 border border-border focus:border-primary/50 outline-none transition-all min-h-[100px] resize-none font-light"
-              ></textarea>
-            </div>
-            <div>
-              <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2 mb-2 block">In 10 Years...</label>
-              <textarea 
-                name="tenYears"
-                value={formData.tenYears}
-                onChange={handleChange}
-                placeholder="Will this still matter? How will it shape your story?"
-                className="w-full p-4 rounded-2xl bg-secondary/30 border border-border focus:border-primary/50 outline-none transition-all min-h-[100px] resize-none font-light"
-              ></textarea>
-            </div>
+        <div>
+          <h3 className="text-lg font-medium mb-2">What pulls you toward this?</h3>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {getSmartChips(
+              gutMap[category] || [
+                "Peace of mind",
+                "Long-term growth",
+                "Feels right",
+                "Less stress"
+              ],
+              historyPatterns.guts
+            ).map((chip) => (
+              <button
+                key={chip}
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    gutFeeling: chip
+                  }))
+                }
+                className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                  formData.gutFeeling === chip
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/50 border-border hover:bg-primary/10"
+                }`}
+              >
+                {chip}
+              </button>
+            ))}
           </div>
-          <div className="flex justify-end">
-            <button onClick={handleNext} className="px-8 py-4 rounded-full bg-foreground text-background font-medium tracking-widest uppercase text-sm hover:bg-foreground/90 transition-all flex items-center gap-2">
-              Next <ArrowRight size={16} />
-            </button>
-          </div>
+          <textarea 
+            name="gutFeeling"
+            value={formData.gutFeeling}
+            onChange={handleChange}
+            placeholder="Your instinct..."
+            className="w-full p-5 rounded-2xl bg-card border border-border outline-none min-h-[100px]"
+          />
         </div>
-      )}
 
-      {/* --- INVERSION FRAMEWORK --- */}
-      {selectedFramework === 'inversion' && step === 2 && (
-        <div className="space-y-8 animate-fade-in">
-          <header className="mb-8">
-            <span className="text-xs uppercase tracking-widest text-primary mb-2 block">Inversion</span>
-            <h2 className="text-3xl md:text-4xl font-serif">Reverse the problem.</h2>
-          </header>
-          
-          <div className="space-y-8">
-            <div>
-              <label className="text-sm uppercase tracking-widest text-destructive/80 ml-2 mb-2 block">What would guarantee failure?</label>
-              <p className="text-xs text-muted-foreground ml-2 mb-2">If you wanted to completely ruin this situation, what exactly would you do?</p>
-              <textarea 
-                name="guaranteedFailure"
-                value={formData.guaranteedFailure}
-                onChange={handleChange}
-                placeholder="List the exact steps to cause a disaster..."
-                className="w-full p-4 rounded-2xl bg-destructive/5 border border-destructive/20 focus:border-destructive/50 outline-none transition-all min-h-[150px] resize-none font-light"
-              ></textarea>
-            </div>
-            <div>
-              <label className="text-sm uppercase tracking-widest text-primary/80 ml-2 mb-2 block">How do you avoid that?</label>
-              <p className="text-xs text-muted-foreground ml-2 mb-2">Now, look at your list above. Your plan is simply to avoid doing those things.</p>
-              <textarea 
-                name="avoidancePlan"
-                value={formData.avoidancePlan}
-                onChange={handleChange}
-                placeholder="What actions ensure you avoid the disaster?"
-                className="w-full p-4 rounded-2xl bg-primary/5 border border-primary/20 focus:border-primary/50 outline-none transition-all min-h-[150px] resize-none font-light"
-              ></textarea>
-            </div>
+        <div>
+          <h3 className="text-lg font-medium mb-2">What are you leaning toward? (optional)</h3>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {getSmartChips(
+              leaningMap[category] || [
+                "Leaning toward it",
+                "Leaning against it",
+                "Wait and see",
+                "Still unsure"
+              ],
+              historyPatterns.leanings
+            ).map((chip) => (
+              <button
+                key={chip}
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    chosenAction: chip
+                  }))
+                }
+                className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                  formData.chosenAction === chip
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/50 border-border hover:bg-primary/10"
+                }`}
+              >
+                {chip}
+              </button>
+            ))}
           </div>
-          <div className="flex justify-end">
-            <button onClick={handleNext} className="px-8 py-4 rounded-full bg-foreground text-background font-medium tracking-widest uppercase text-sm hover:bg-foreground/90 transition-all flex items-center gap-2">
-              Next <ArrowRight size={16} />
-            </button>
-          </div>
+          <textarea 
+            name="chosenAction"
+            value={formData.chosenAction}
+            onChange={handleChange}
+            placeholder="You don’t have to be certain… just what feels likely right now."
+            className="w-full p-5 rounded-2xl bg-card border border-border outline-none min-h-[100px]"
+          />
         </div>
-      )}
 
-      {/* --- FEAR SETTING FRAMEWORK --- */}
-      {selectedFramework === 'fear-setting' && step === 2 && (
-        <div className="space-y-8 animate-fade-in">
-          <header className="mb-8">
-            <span className="text-xs uppercase tracking-widest text-primary mb-2 block">Fear-Setting</span>
-            <h2 className="text-3xl md:text-4xl font-serif">Define the nightmare.</h2>
-          </header>
-          
-          <div className="space-y-6">
-            <div>
-              <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2 mb-2 block">The Nightmare</label>
-              <textarea 
-                name="worstCase"
-                value={formData.worstCase}
-                onChange={handleChange}
-                placeholder="What is the absolute worst thing that could happen if you take this risk?"
-                className="w-full p-4 rounded-2xl bg-secondary/30 border border-border focus:border-primary/50 outline-none transition-all min-h-[100px] resize-none font-light"
-              ></textarea>
-            </div>
-            <div>
-              <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2 mb-2 block">Prevention</label>
-              <textarea 
-                name="prevention"
-                value={formData.prevention}
-                onChange={handleChange}
-                placeholder="What could you do to prevent that from happening?"
-                className="w-full p-4 rounded-2xl bg-secondary/30 border border-border focus:border-primary/50 outline-none transition-all min-h-[100px] resize-none font-light"
-              ></textarea>
-            </div>
-            <div>
-              <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2 mb-2 block">Repair</label>
-              <textarea 
-                name="repair"
-                value={formData.repair}
-                onChange={handleChange}
-                placeholder="If the worst did happen, how could you fix it or recover?"
-                className="w-full p-4 rounded-2xl bg-secondary/30 border border-border focus:border-primary/50 outline-none transition-all min-h-[100px] resize-none font-light"
-              ></textarea>
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <button onClick={handleNext} className="px-8 py-4 rounded-full bg-foreground text-background font-medium tracking-widest uppercase text-sm hover:bg-foreground/90 transition-all flex items-center gap-2">
-              Next <ArrowRight size={16} />
-            </button>
-          </div>
+        <div className="flex justify-end pt-4">
+          <button 
+            onClick={handleSave}
+            disabled={!formData.decisionDescription.trim()}
+            className="px-8 py-4 rounded-full bg-primary text-primary-foreground text-sm uppercase tracking-widest hover:bg-primary/90 transition disabled:opacity-50"
+          >
+            Done
+          </button>
         </div>
-      )}
 
-      {/* FINAL COMMON STEP */}
-      {step === 3 && (
-        <div className="space-y-12 animate-fade-in">
-          <header className="mb-8">
-            <h2 className="text-3xl md:text-4xl font-serif">Synthesize.</h2>
-            <p className="text-muted-foreground font-light mt-2">Based on your reflection, what will you do?</p>
-          </header>
-          
-          <div className="space-y-8">
-            <div>
-              <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2 mb-2 block">The Action</label>
-              <textarea 
-                name="chosenAction"
-                value={formData.chosenAction}
-                onChange={handleChange}
-                placeholder="I have decided to..."
-                className="w-full p-6 rounded-3xl bg-card border border-primary/30 focus:border-primary outline-none transition-all min-h-[150px] resize-none text-xl font-serif"
-              ></textarea>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t border-border">
-              <div className="flex justify-between items-end">
-                <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2">How confident are you?</label>
-                <span className="font-mono text-xl text-primary/80">{formData.confidenceRating}/10</span>
-              </div>
-              <input 
-                type="range" 
-                min="1" 
-                max="10" 
-                name="confidenceRating"
-                value={formData.confidenceRating}
-                onChange={handleChange}
-                className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground font-light">
-                <span>Unsure</span>
-                <span>Certain</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-8">
-            <button 
-              onClick={handleSave}
-              className="px-10 py-5 rounded-full bg-foreground text-background font-medium tracking-widest uppercase text-sm hover:bg-foreground/90 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl hover:-translate-y-1"
-            >
-              <Save size={18} /> Save Reflection
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

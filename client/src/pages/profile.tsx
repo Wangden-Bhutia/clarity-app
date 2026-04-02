@@ -29,24 +29,23 @@ export default function ProfilePage() {
         </p>
       </div>
 
-      {/* Calibration Summary */}
-      <div className="space-y-4 p-5 rounded-2xl bg-card/40 border border-border/40 shadow-sm">
-        <h2 className="text-sm uppercase tracking-widest text-muted-foreground">
-          Calibration Summary
-        </h2>
-
-        <div className="space-y-2 text-sm font-light text-foreground/80">
-          <p>Total decisions: {summary.total}</p>
-          <p>Less severe than expected: {summary.lessSevereThanExpected}</p>
-          <p>Matched expectation: {summary.matchedExpectation}</p>
-          <p>Worse than expected: {summary.worseThanExpected}</p>
-        </div>
+      {/* What this is */}
+      <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 shadow-sm space-y-2">
+        <p className="text-sm text-primary/90 font-normal leading-relaxed">
+          Clarity helps you compare what you expect with what actually happens.
+        </p>
+        <p className="text-sm text-foreground/80 font-light leading-relaxed">
+          Log a decision, note your worst-case expectation, then record the outcome.
+        </p>
+        <p className="text-sm text-foreground/80 font-light leading-relaxed">
+          Over time, patterns emerge — showing whether your thinking is accurate, too cautious, or overly optimistic.
+        </p>
       </div>
 
       {/* Interpretation */}
       <div className="text-center space-y-2">
-        <p className="text-sm text-muted-foreground/80 italic">
-          {getInterpretation()}
+        <p className="text-sm text-primary/80 italic">
+          Log a few more decisions — your pattern will start to reveal itself.
         </p>
         <p className="text-xs text-muted-foreground/60 italic">
           Awareness improves judgment.

@@ -175,7 +175,7 @@ export default function DecisionFlow() {
   }
 
   return (
-    <div className="flex flex-col gap-8 py-8 max-w-2xl mx-auto w-full animate-fade-in-slow">
+    <div className="flex-1 overflow-y-auto flex flex-col gap-8 py-8 max-w-2xl mx-auto w-full animate-fade-in-slow">
       {/* Progress Header */}
       <div className="flex items-center justify-between mb-8 text-sm uppercase tracking-widest text-muted-foreground">
         <button 
@@ -206,6 +206,24 @@ export default function DecisionFlow() {
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2">What decision are you currently facing?</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {[
+                  "Career decision",
+                  "Relationship choice",
+                  "Money matter",
+                  "Health decision",
+                  "Something else"
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, decisionDescription: preset }))}
+                    className="px-3 py-1 rounded-full text-xs bg-secondary/60 hover:bg-secondary transition"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
               <textarea 
                 name="decisionDescription"
                 value={formData.decisionDescription}
@@ -223,7 +241,7 @@ export default function DecisionFlow() {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                placeholder="e.g., Should I take the new job offer?"
+                placeholder="Short label (optional)"
                 className="w-full p-4 rounded-2xl bg-card border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all text-lg font-serif"
                 data-testid="input-title"
               />
@@ -277,7 +295,7 @@ export default function DecisionFlow() {
 
           <button 
             onClick={() => setStep('fears')}
-            disabled={!formData.title}
+            disabled={!formData.decisionDescription && !formData.title}
             className="w-full py-4 mt-8 rounded-full bg-primary text-primary-foreground tracking-widest uppercase text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Explore Fears <ArrowRight size={16} />

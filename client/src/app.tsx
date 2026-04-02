@@ -14,13 +14,12 @@ import Journal from "./pages/journal";
 import Timeline from "./pages/timeline";
 import Settings from "./pages/settings";
 import DecisionSummary from "./pages/decision-summary";
-import Onboarding from "./pages/onboarding";
 import NotFound from "@/pages/not-found";
 import ProfilePage from "./pages/profile";
 import PinLock from "./components/pin-lock";
 
 function Router() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
 
@@ -43,15 +42,15 @@ function Router() {
           isReturningAfterInactivity = daysSinceLastOpen >= 7;
         }
         
-        if ((isFirstLaunch || isReturningAfterInactivity) && location !== '/onboarding') {
-          window.history.replaceState({ isReturning: isReturningAfterInactivity }, '');
-          setLocation('/onboarding');
-        }
+        // if ((isFirstLaunch || isReturningAfterInactivity)) {
+        //   window.history.replaceState({ isReturning: isReturningAfterInactivity }, '');
+        //   setLocation('/profile');
+        // }
 
-        const storedPin = localStorage.getItem('clarity_pin');
-        if (storedPin) {
-          setIsLocked(true);
-        }
+        // const storedPin = localStorage.getItem('clarity_pin');
+        // if (storedPin) {
+        //   setIsLocked(true);
+        // }
 
       } catch (error) {
         console.error("Error checking app status:", error);
@@ -61,7 +60,7 @@ function Router() {
     };
     
     checkStatus();
-  }, [location, setLocation]);
+  }, [setLocation]);
 
   if (isChecking) return null;
 
@@ -69,9 +68,6 @@ function Router() {
     return <PinLock onUnlock={() => setIsLocked(false)} />;
   }
 
-  if (location === '/onboarding') {
-    return <Onboarding />;
-  }
 
   return (
     <Layout>
@@ -82,7 +78,6 @@ function Router() {
         <Route path="/frameworks" component={FrameworkFlow} />
         <Route path="/journal" component={Journal} />
         <Route path="/decision/:id" component={DecisionSummary} />
-        <Route path="/timeline" component={Timeline} />
         <Route path="/settings" component={Settings} />
         <Route path="/profile" component={ProfilePage} />
         <Route component={NotFound} />

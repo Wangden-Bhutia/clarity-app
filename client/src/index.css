@@ -65,7 +65,8 @@
     @apply font-sans antialiased bg-background text-foreground transition-colors duration-1000;
     height: 100%;
     overflow: hidden;
-    overscroll-behavior: none;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch; /* smooth momentum on iOS */
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif font-medium tracking-wide;
@@ -101,4 +102,34 @@ button:active, .tap:active {
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scroll-smooth-soft {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Soft fade at bottom (optional visual polish) */
+.fade-bottom {
+  position: relative;
+}
+
+.fade-bottom::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, hsl(var(--background)));
 }

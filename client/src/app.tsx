@@ -75,7 +75,7 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/flow" component={DecisionFlow} />
         <Route path="/quick-flow" component={QuickFlow} />
-        <Route path="/frameworks" component={FrameworkFlow} />
+        <Route path="/framework-flow" component={FrameworkFlow} />
         <Route path="/journal" component={Journal} />
         <Route path="/decision/:id" component={DecisionSummary} />
         <Route path="/settings" component={Settings} />

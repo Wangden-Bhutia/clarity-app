@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [isLocked, setIsLocked] = useState(false);
+  const [pinInput, setPinInput] = useState("");
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -18,6 +20,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       }
     };
     loadTheme();
+    const storedPin = localStorage.getItem("app_pin");
+    if (storedPin) {
+      setIsLocked(true);
+    }
   }, []);
 
   const toggleTheme = async () => {
@@ -31,19 +37,57 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     await db.setSetting('theme', newTheme);
   };
 
+  const handleUnlock = () => {
+    const storedPin = localStorage.getItem("app_pin");
+    if (pinInput === storedPin) {
+      setIsLocked(false);
+      setPinInput("");
+    }
+  };
+
+  if (isLocked) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground">
+        <div className="w-full max-w-xs text-center space-y-6">
+          <h2 className="text-xl font-serif">Enter PIN</h2>
+
+          <input
+            type="password"
+            value={pinInput}
+            onChange={(e) => setPinInput(e.target.value)}
+            className="w-full p-3 rounded-xl border border-border text-center"
+            placeholder="••••"
+          />
+
+          <button
+            onClick={handleUnlock}
+            className="w-full py-3 rounded-full bg-primary text-primary-foreground"
+          >
+            Unlock
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
 
       <header className="py-6 px-8 md:px-12 flex justify-between items-center">
-        <Link href="/">
-          <a className="font-serif text-2xl tracking-widest text-primary/90">
-            Clarity
-          </a>
+        <Link href="/" className="font-serif text-2xl tracking-widest text-primary/90">
+          Clarity
         </Link>
 
-        <button onClick={toggleTheme} className="p-2 rounded-full">
-          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="px-2 py-1 rounded-full bg-secondary/30 text-[9px] tracking-wide text-muted-foreground/50 inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
+            A StillMind Labs creation
+          </div>
+
+          <button onClick={toggleTheme} className="p-2 rounded-full">
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -55,25 +99,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <nav className="fixed bottom-0 left-0 w-full border-t border-border bg-background">
         <div className="max-w-md mx-auto flex justify-around p-4">
 
-          <Link href="/">
-            <a className={`flex flex-col items-center ${location === '/' ? 'text-primary' : ''}`}>
-              <Home size={20} />
-              <span className="text-[10px]">Home</span>
-            </a>
+          <Link href="/" className={`flex flex-col items-center ${location === '/' ? 'text-primary' : ''}`}>
+            <Home size={20} />
+            <span className="text-[10px]">Home</span>
           </Link>
 
-          <Link href="/journal">
-            <a className={`flex flex-col items-center ${location === '/journal' ? 'text-primary' : ''}`}>
-              <Book size={20} />
-              <span className="text-[10px]">Journal</span>
-            </a>
+          <Link href="/journal" className={`flex flex-col items-center ${location === '/journal' ? 'text-primary' : ''}`}>
+            <Book size={20} />
+            <span className="text-[10px]">Journal</span>
           </Link>
 
-          <Link href="/settings">
-            <a className={`flex flex-col items-center ${location === '/settings' ? 'text-primary' : ''}`}>
-              <Settings size={20} />
-              <span className="text-[10px]">Settings</span>
-            </a>
+          <Link href="/settings" className={`flex flex-col items-center ${location === '/settings' ? 'text-primary' : ''}`}>
+            <Settings size={20} />
+            <span className="text-[10px]">Settings</span>
           </Link>
 
         </div>

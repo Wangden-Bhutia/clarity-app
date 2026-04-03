@@ -9,12 +9,17 @@ interface PinLockProps {
 export default function PinLock({ onUnlock }: PinLockProps) {
   const { toast } = useToast();
   const [pin, setPin] = useState("");
-  const [storedPin, setStoredPin] = useState<string | null>(null);
+  const [storedPin, setStoredPin] = useState<string | null>(
+    typeof window !== "undefined" ? localStorage.getItem("app_pin") : null
+  );
 
   useEffect(() => {
-    const saved = localStorage.getItem('clarity_pin');
-    if (saved) setStoredPin(saved);
-  }, []);
+    if (!storedPin) {
+      onUnlock();
+    }
+  }, [storedPin, onUnlock]);
+
+  if (!storedPin) return null;
 
   const handleInput = (num: string) => {
     if (pin.length < 4) {
@@ -24,7 +29,9 @@ export default function PinLock({ onUnlock }: PinLockProps) {
       if (newPin.length === 4) {
         if (storedPin) {
           if (newPin === storedPin) {
+            setPin(""); // clear immediately to prevent second UI state
             onUnlock();
+            return;
           } else {
             toast({
               title: "Incorrect PIN",
@@ -41,8 +48,6 @@ export default function PinLock({ onUnlock }: PinLockProps) {
   const handleDelete = () => {
     setPin(pin.slice(0, -1));
   };
-
-  if (!storedPin) return null; // Should not render if no PIN is set
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col items-center justify-center p-4 animate-fade-in">

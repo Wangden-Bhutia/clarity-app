@@ -12,6 +12,14 @@ export default function Settings() {
   const [step, setStep] = useState<"enter" | "confirm">("enter");
   const [firstPin, setFirstPin] = useState("");
 
+  const [hasPin, setHasPin] = useState(
+    typeof window !== "undefined" && !!localStorage.getItem("app_pin")
+  );
+
+  const [mode, setMode] = useState<"set" | "remove" | "change">("set");
+  const [changePhase, setChangePhase] = useState<"verify" | "new" | "confirm">("verify");
+
+
   return (
     <div className="flex flex-col gap-6 py-6 pb-24 max-w-2xl mx-auto w-full">
       <header>
@@ -27,17 +35,48 @@ export default function Settings() {
           Privacy
         </h2>
 
-        <button
-          onClick={() => {
-            setShowPinModal(true);
-            setPinInput("");
-            setStep("enter");
-          }}
-          className="w-full flex items-center justify-between p-6 rounded-2xl bg-card border border-border/50"
-        >
-          <span>Set PIN Lock</span>
-          <Shield />
-        </button>
+        {hasPin ? (
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => {
+                setMode("change");
+                setChangePhase("verify");
+                setShowPinModal(true);
+                setPinInput("");
+              }}
+              className="w-full flex items-center justify-between p-6 rounded-2xl bg-card border border-border/50"
+            >
+              <span>Change PIN</span>
+              <Shield />
+            </button>
+
+            <button
+              onClick={() => {
+                setMode("remove");
+                setShowPinModal(true);
+                setPinInput("");
+              }}
+              className="w-full flex items-center justify-between p-6 rounded-2xl bg-card border border-border/50"
+            >
+              <span>Remove PIN Lock</span>
+              <Shield />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              setMode("set");
+              setShowPinModal(true);
+              setPinInput("");
+              setStep("enter");
+            }}
+            className="w-full flex items-center justify-between p-6 rounded-2xl bg-card border border-border/50"
+          >
+            <span>Set App PIN</span>
+            <Shield />
+          </button>
+        )}
+
       </section>
 
       {/* Data */}
@@ -108,7 +147,17 @@ export default function Settings() {
         <div className="bg-card border border-border/50 rounded-2xl p-6 w-[280px] space-y-4 text-center">
           
           <p className="text-sm text-muted-foreground">
-            {step === "enter" ? "Enter PIN" : "Confirm PIN"}
+            {mode === "set"
+              ? step === "enter"
+                ? "Create PIN"
+                : "Confirm PIN"
+              : mode === "remove"
+              ? "Enter current PIN to remove"
+              : changePhase === "verify"
+              ? "Enter current PIN"
+              : changePhase === "new"
+              ? "New PIN"
+              : "Confirm new PIN"}
           </p>
 
           <div className="flex justify-center gap-2 mb-2">
@@ -157,11 +206,12 @@ export default function Settings() {
           <button
             onClick={() => {
               if (pinInput.length < 4) return;
-              const existingPin = localStorage.getItem("app_pin");
 
-              if (!existingPin) {
+              const storedPin = localStorage.getItem("app_pin");
+
+              // SET PIN
+              if (mode === "set") {
                 if (step === "enter") {
-                  if (!pinInput || pinInput.length < 4) return;
                   setFirstPin(pinInput);
                   setPinInput("");
                   setStep("confirm");
@@ -175,23 +225,69 @@ export default function Settings() {
                 }
 
                 localStorage.setItem("app_pin", firstPin);
+                setHasPin(true);
                 toast({ title: "PIN set" });
                 setShowPinModal(false);
                 return;
               }
 
-              if (pinInput === existingPin) {
-                localStorage.removeItem("app_pin");
-                toast({ title: "PIN removed" });
-              } else {
-                toast({ title: "Incorrect PIN", variant: "destructive" });
+              // REMOVE PIN
+              if (mode === "remove") {
+                if (pinInput === storedPin) {
+                  localStorage.removeItem("app_pin");
+                  setHasPin(false);
+                  toast({ title: "PIN removed" });
+                } else {
+                  toast({ title: "Incorrect PIN", variant: "destructive" });
+                }
+                setShowPinModal(false);
+                return;
               }
 
-              setShowPinModal(false);
+              // CHANGE PIN
+              if (mode === "change") {
+                if (changePhase === "verify") {
+                  if (pinInput === storedPin) {
+                    setChangePhase("new");
+                    setPinInput("");
+                  } else {
+                    toast({ title: "Incorrect PIN", variant: "destructive" });
+                  }
+                  return;
+                }
+
+                if (changePhase === "new") {
+                  setFirstPin(pinInput);
+                  setPinInput("");
+                  setChangePhase("confirm");
+                  return;
+                }
+
+                if (changePhase === "confirm") {
+                  if (pinInput !== firstPin) {
+                    toast({ title: "PINs do not match", variant: "destructive" });
+                    setPinInput("");
+                    return;
+                  }
+
+                  localStorage.setItem("app_pin", firstPin);
+                  toast({ title: "PIN updated" });
+                  setShowPinModal(false);
+                  return;
+                }
+              }
             }}
             className="w-full py-2 rounded-full bg-primary text-primary-foreground text-xs"
           >
-            {step === "enter" ? "Next" : "Confirm"}
+            {mode === "set"
+              ? step === "enter"
+                ? "Next"
+                : "Confirm"
+              : mode === "remove"
+              ? "Remove"
+              : changePhase === "confirm"
+              ? "Confirm"
+              : "Next"}
           </button>
 
           <button

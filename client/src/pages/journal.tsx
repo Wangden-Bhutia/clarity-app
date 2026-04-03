@@ -80,7 +80,8 @@ export default function Journal() {
   }
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-none flex flex-col gap-6 py-6 px-4 max-w-2xl mx-auto w-full pb-32">
+    <div className="flex flex-col min-h-screen">
+      <div className="flex-1 overflow-y-scroll touch-pan-y flex flex-col gap-6 py-6 px-4 max-w-2xl mx-auto w-full pb-32">
       <header className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-light mb-3">Journal</h1>
@@ -396,6 +397,7 @@ export default function Journal() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

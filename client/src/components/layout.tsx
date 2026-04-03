@@ -6,8 +6,6 @@ import { db } from "@/lib/db";
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [isLocked, setIsLocked] = useState(false);
-  const [pinInput, setPinInput] = useState("");
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -20,10 +18,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       }
     };
     loadTheme();
-    const storedPin = localStorage.getItem("app_pin");
-    if (storedPin) {
-      setIsLocked(true);
-    }
   }, []);
 
   const toggleTheme = async () => {
@@ -36,39 +30,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
     await db.setSetting('theme', newTheme);
   };
-
-  const handleUnlock = () => {
-    const storedPin = localStorage.getItem("app_pin");
-    if (pinInput === storedPin) {
-      setIsLocked(false);
-      setPinInput("");
-    }
-  };
-
-  if (isLocked) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground">
-        <div className="w-full max-w-xs text-center space-y-6">
-          <h2 className="text-xl font-serif">Enter PIN</h2>
-
-          <input
-            type="password"
-            value={pinInput}
-            onChange={(e) => setPinInput(e.target.value)}
-            className="w-full p-3 rounded-xl border border-border text-center"
-            placeholder="••••"
-          />
-
-          <button
-            onClick={handleUnlock}
-            className="w-full py-3 rounded-full bg-primary text-primary-foreground"
-          >
-            Unlock
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">

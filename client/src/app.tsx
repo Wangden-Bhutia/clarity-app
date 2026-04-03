@@ -47,25 +47,69 @@ function Router() {
         //   setLocation('/profile');
         // }
 
-        // const storedPin = localStorage.getItem('clarity_pin');
-        // if (storedPin) {
-        //   setIsLocked(true);
-        // }
+        const storedPin = localStorage.getItem('app_pin');
+        if (storedPin) {
+          setIsLocked(true);
+        }
 
       } catch (error) {
         console.error("Error checking app status:", error);
       } finally {
+        // End checking immediately so UI can render
         setIsChecking(false);
       }
     };
     
     checkStatus();
+
+    // -------- Idle Lock --------
+    let idleTimer: any;
+
+    const resetTimer = () => {
+      localStorage.setItem("clarity_last_activity", Date.now().toString());
+      clearTimeout(idleTimer);
+
+      idleTimer = setTimeout(() => {
+        const storedPin = localStorage.getItem("app_pin");
+        const lastActivity = localStorage.getItem("clarity_last_activity");
+        const now = Date.now();
+
+        if (
+          storedPin &&
+          lastActivity &&
+          now - parseInt(lastActivity) >= 2 * 60 * 1000
+        ) {
+          setIsLocked(true);
+        }
+      }, 2 * 60 * 1000);
+    };
+
+    window.addEventListener("mousemove", resetTimer);
+    window.addEventListener("keydown", resetTimer);
+    window.addEventListener("touchstart", resetTimer);
+
+    resetTimer();
+
+    return () => {
+      window.removeEventListener("mousemove", resetTimer);
+      window.removeEventListener("keydown", resetTimer);
+      window.removeEventListener("touchstart", resetTimer);
+      clearTimeout(idleTimer);
+    };
   }, [setLocation]);
 
-  if (isChecking) return null;
+  if (isChecking) return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
 
   if (isLocked) {
-    return <PinLock onUnlock={() => setIsLocked(false)} />;
+    return (
+      <PinLock
+        onUnlock={() => {
+          setIsLocked(false);
+          localStorage.setItem("clarity_last_activity", Date.now().toString());
+          setLocation("/"); // 🔥 critical fix: reset route after unlock
+        }}
+      />
+    );
   }
 
 

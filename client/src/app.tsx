@@ -106,7 +106,7 @@ function Router() {
         onUnlock={() => {
           setIsLocked(false);
           localStorage.setItem("clarity_last_activity", Date.now().toString());
-          setLocation("/"); // 🔥 critical fix: reset route after unlock
+          // Stay on current route instead of forcing redirect
         }}
       />
     );

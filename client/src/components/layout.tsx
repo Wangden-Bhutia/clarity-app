@@ -32,10 +32,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden">
 
       <header className="py-6 px-8 md:px-12 flex justify-between items-center">
-        <Link href="/" className="font-serif text-2xl tracking-widest text-primary/90">
+        <Link href="/" className="font-serif text-3xl md:text-4xl font-normal tracking-wide text-primary/90">
           Clarity
         </Link>
 
@@ -52,7 +52,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 md:px-12 pb-24">
+        <div
+          className={
+            "flex-1 min-h-0 px-6 md:px-12 pb-24 " +
+            (location === "/" ? "overflow-hidden" : "overflow-y-auto")
+          }
+        >
           {children}
         </div>
       </main>

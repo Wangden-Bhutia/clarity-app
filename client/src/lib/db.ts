@@ -7,13 +7,15 @@ export interface Decision {
   category: string;
   importanceLevel?: 'Low' | 'Medium' | 'High' | 'Major';
   options: string;
-  fears: string;
+  primaryConcern?: string;
+  primaryArchetype?: string;
+  worryNote?: string;
   hopes: string;
   gutFeeling: string;
-  worstOutcome: string;
-  worstOutcomeProbability?: number;
+  pullNote?: string;
   recoveryPlan: string;
   chosenAction: string;
+  actionNote?: string;
   confidenceRating: number;
   reviewDate?: number;
   date: number; // timestamp
@@ -22,6 +24,8 @@ export interface Decision {
   outcomeStatus: 'pending' | 'recorded';
   outcomeResult?: string;
   surprises?: string;
+  outcomeDetails?: string;
+  outcomeAttribution?: string;
   lessonsLearned?: string;
   outcomeDate?: number;
   outcomeEvaluation?: 'Better than expected' | 'As expected' | 'Worse than expected';
@@ -77,7 +81,19 @@ export const db = {
   
   async saveDecision(decision: Decision): Promise<void> {
     const db = await getDB();
-    await db.put('decisions', decision);
+
+    // Ensure primaryConcern is always persisted
+    const normalizedDecision: Decision = {
+      ...decision,
+      primaryConcern:
+        decision.primaryConcern && decision.primaryConcern.trim().length > 0
+          ? decision.primaryConcern
+          : "",
+      primaryArchetype: decision.primaryArchetype,
+    };
+
+    console.log("DB SAVING PRIMARY:", normalizedDecision.primaryArchetype);
+    await db.put('decisions', normalizedDecision);
   },
   
   async deleteDecision(id: string): Promise<void> {

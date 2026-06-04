@@ -11,19 +11,19 @@ interface TruthRevealProps {
 const generateTruthMessage = (occurred: boolean, profile: UserProfile) => {
   const getRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
-  if (!occurred) {
+  if (occurred) {
     return getRandom([
-      "You were concerned about this. It didn’t happen.",
-      "Your fear didn’t materialize.",
-      "You expected trouble. It stayed quiet.",
-      "The situation turned out calmer than expected."
+      "What you feared did happen.",
+      "Your concern proved justified here.",
+      "Your instinct aligned with reality this time.",
+      "The risk you sensed became real."
     ]);
   } else {
     return getRandom([
-      "Something you were concerned about did happen.",
-      "Your concern matched reality here.",
-      "This one didn’t go as hoped.",
-      "The risk you sensed showed up."
+      "What you feared did not happen.",
+      "Your concern did not materialize.",
+      "Reality was gentler than expected.",
+      "Things turned out calmer than feared."
     ]);
   }
 };
@@ -55,27 +55,16 @@ export default function TruthReveal({ occurred, profile, onContinue }: TruthReve
 
   return (
     <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="max-w-md w-full bg-card border border-border p-8 md:p-12 rounded-3xl shadow-xl animate-slide-up-slow text-center">
-        <span className="text-[10px] uppercase tracking-widest text-primary/70 mb-8 block">Reality Check</span>
+      <div className="max-w-lg w-full bg-card border border-border px-8 py-7 md:px-10 md:py-9 rounded-3xl shadow-xl animate-slide-up-slow text-center">
+        <span className="text-[10px] uppercase tracking-widest text-primary/70 mb-6 block">Reality Check</span>
         
-        <h2 className="text-3xl md:text-4xl font-serif text-foreground leading-tight mb-10 transition-opacity duration-500">
+        <h2 className="text-2xl md:text-3xl font-serif text-foreground leading-[1.15] mb-8 transition-opacity duration-500">
           {message ? `"${message}"` : "..."}
         </h2>
-        <p className="text-xs text-muted-foreground/60 italic mb-10">
-          Take a moment to notice this.
+        <p className="text-sm text-muted-foreground/60 italic leading-relaxed mb-8">
+          Pause and notice the difference between expectation and reality.
         </p>
         
-        <div className="space-y-2 mb-12 pt-6 border-t border-border/30 text-sm font-light text-muted-foreground">
-          <p>Outcome: <span className="text-foreground/80">{occurred ? "Happened" : "Did not happen"}</span></p>
-          
-          {showPatternLabel && (
-            <div className="pt-4 mt-4 border-t border-border/30 text-xs">
-              <span className="uppercase tracking-widest text-primary/60 block mb-1">Pattern</span>
-              <p className="text-foreground/70">{patternLabels[profile]}</p>
-            </div>
-          )}
-        </div>
-
         <button 
           onClick={onContinue}
           disabled={!ready}
@@ -85,7 +74,7 @@ export default function TruthReveal({ occurred, profile, onContinue }: TruthReve
               : "bg-primary/30 text-primary-foreground/50 cursor-not-allowed"
           }`}
         >
-          Continue <ArrowRight size={16} />
+          View Reflection <ArrowRight size={16} />
         </button>
       </div>
     </div>

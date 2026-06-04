@@ -26,6 +26,7 @@ export default function DecisionFlow() {
     category: "",
     importanceLevel: "Medium" as any,
     options: "",
+    primaryConcern: "",
     fears: "",
     worstOutcome: "",
     worstOutcomeProbability: 50,
@@ -112,22 +113,36 @@ export default function DecisionFlow() {
       }
 
       const { reviewDateOption, customReviewDate, ...decisionData } = formData;
-      
+
+      // Ensure primaryConcern is always set before saving
+      const computedPrimaryConcern =
+        formData.primaryConcern && formData.primaryConcern.trim().length > 0
+          ? formData.primaryConcern
+          : formData.fears && formData.fears.trim().length > 0
+          ? formData.fears.split(".")[0].trim().slice(0, 80)
+          : formData.worstOutcome && formData.worstOutcome.trim().length > 0
+          ? formData.worstOutcome.split(".")[0].trim().slice(0, 80)
+          : "";
+
+      console.log("DEBUG primaryConcern:", {
+        formPrimary: formData.primaryConcern,
+        fears: formData.fears,
+        worstOutcome: formData.worstOutcome,
+        computed: computedPrimaryConcern
+      });
+
+      // formData.primaryConcern = computedPrimaryConcern;
+
       const newDecision: Decision = {
         id: generateId(),
         ...decisionData,
+        primaryConcern: computedPrimaryConcern,
         reviewDate,
         date: Date.now(),
         outcomeStatus: 'pending'
       };
 
       await db.saveDecision(newDecision);
-      
-      toast({
-        title: "Reflection Saved",
-        description: "Your decision process has been recorded securely.",
-      });
-      
       setLocation(`/decision/${newDecision.id}`);
     } catch (error) {
       console.error("Error saving decision:", error);
@@ -314,10 +329,50 @@ export default function DecisionFlow() {
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2">What are you afraid of?</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {[
+                  "Making the wrong choice",
+                  "Career stagnation",
+                  "Workplace conflict",
+                  "Losing opportunity"
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() =>
+                      setFormData(prev => ({
+                        ...prev,
+                        fears: chip,
+                        primaryConcern: chip
+                      }))
+                    }
+                    className={`px-3 py-1 rounded-full text-xs transition ${
+                      formData.primaryConcern === chip
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary/60 hover:bg-secondary"
+                    }`}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
               <textarea 
                 name="fears"
                 value={formData.fears}
-                onChange={handleChange}
+                onChange={(e) => {
+                  const raw = e.target.value;
+
+                  const cleaned = raw
+                    .split(".")[0]
+                    .trim()
+                    .slice(0, 80);
+
+                  setFormData(prev => ({
+                    ...prev,
+                    fears: raw,
+                    primaryConcern: cleaned
+                  }));
+                }}
                 placeholder="If I choose X, I'm worried that..."
                 className="w-full p-4 rounded-2xl bg-card border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all min-h-[120px] resize-none font-light leading-relaxed"
               ></textarea>
@@ -328,7 +383,20 @@ export default function DecisionFlow() {
               <textarea 
                 name="worstOutcome"
                 value={formData.worstOutcome}
-                onChange={handleChange}
+                onChange={(e) => {
+                  const raw = e.target.value;
+
+                  const cleaned = raw
+                    .split(".")[0]
+                    .trim()
+                    .slice(0, 80);
+
+                  setFormData(prev => ({
+                    ...prev,
+                    worstOutcome: raw,
+                    primaryConcern: prev.primaryConcern || cleaned
+                  }));
+                }}
                 placeholder="Realistically, what is the worst thing that could actually happen?"
                 className="w-full p-4 rounded-2xl bg-card border border-destructive/20 focus:border-destructive/50 focus:ring-1 focus:ring-destructive/50 outline-none transition-all min-h-[120px] resize-none font-light leading-relaxed"
               ></textarea>

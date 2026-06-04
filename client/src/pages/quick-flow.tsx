@@ -15,13 +15,21 @@ export default function QuickFlow() {
   
   const [formData, setFormData] = useState({
     decisionDescription: "",
-    worstOutcome: "",
+    primaryConcern: "",
     worstOutcomeProbability: 50
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+    const name = target.name;
+    const value = target.value;
+
+    console.log("INPUT CHANGE:", name, value);
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSave = async () => {
@@ -35,16 +43,17 @@ export default function QuickFlow() {
     }
 
     try {
+      const cleanedConcern = formData.primaryConcern.trim() || "";
+
       const newDecision: Decision = {
         id: generateId(),
         decisionDescription: formData.decisionDescription,
         title: formData.decisionDescription.split('.')[0].substring(0, 50) + (formData.decisionDescription.length > 50 ? '...' : ''),
-        worstOutcome: formData.worstOutcome,
+        primaryConcern: cleanedConcern,
+        worstOutcome: cleanedConcern,
         worstOutcomeProbability: formData.worstOutcomeProbability,
         category: "Other",
         options: "",
-        fears: "",
-        hopes: "",
         gutFeeling: "",
         recoveryPlan: "",
         chosenAction: "To be determined...",
@@ -52,7 +61,7 @@ export default function QuickFlow() {
         date: Date.now(),
         outcomeStatus: 'pending'
       };
-
+      console.log("PRIMARY CONCERN BEING SAVED:", cleanedConcern);
       await db.saveDecision(newDecision);
       
       toast({
@@ -102,14 +111,17 @@ export default function QuickFlow() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2">What is the absolute worst outcome?</label>
+          <label className="text-sm uppercase tracking-widest text-foreground/70 ml-2">What are you worried about?</label>
           <textarea 
-            name="worstOutcome"
-            value={formData.worstOutcome}
+            name="primaryConcern"
+            value={formData.primaryConcern}
             onChange={handleChange}
-            placeholder="Realistically, what is the worst thing that could happen?"
+            placeholder="What is your main concern or fear here?"
             className="w-full p-4 rounded-2xl bg-card border border-destructive/20 focus:border-destructive/50 focus:ring-1 focus:ring-destructive/50 outline-none transition-all min-h-[100px] resize-none font-light"
           ></textarea>
+          <p className="text-xs text-red-500 mt-1">
+            DEBUG VALUE: {formData.primaryConcern}
+          </p>
         </div>
         
         <div className="space-y-4 pt-2">

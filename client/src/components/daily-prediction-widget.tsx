@@ -47,10 +47,6 @@ export default function DailyPredictionWidget() {
 
       await db.saveDecision(newDecision);
       
-      toast({
-        title: "Prediction Locked",
-        description: "We'll ask you how it went tomorrow.",
-      });
       
       setDescription("");
       setProbability(50);

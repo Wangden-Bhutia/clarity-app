@@ -1,8 +1,41 @@
 import { getLearningData } from "@/lib/learningStore";
+
+export const normalizeConcept = (text: string) => {
+  const t = text.toLowerCase();
+
+  const groups: Record<string, string[]> = {
+    growth: ["growth", "opportunity", "long-term growth"],
+    safety: ["safety", "security", "stability"],
+    emotion: ["connection", "understanding", "peace of mind", "feels right"],
+    risk: ["loss", "regret", "mistake", "conflict", "uncertainty"],
+    clarity: ["clarity", "unclear", "confusion", "overthinking", "unknown"]
+  };
+
+  for (const [key, values] of Object.entries(groups)) {
+    if (values.some(v => t.includes(v))) return key;
+  }
+
+  return text;
+};
+
 export function useInsightEngine(decisions: any[]) {
   const decisionsWithOutcome = decisions.filter(
     (d: any) => d.worstOutcomeOccurred !== undefined
   );
+
+  // --- Calibration (prediction vs reality) ---
+  const calibrationData = decisionsWithOutcome
+    .filter((d: any) => typeof d.worstOutcomeProbability === "number")
+    .map((d: any) => ({
+      predicted: d.worstOutcomeProbability / 100,
+      actual: d.worstOutcomeOccurred ? 1 : 0
+    }));
+
+  const avgCalibrationError =
+    calibrationData.length > 0
+      ? calibrationData.reduce((sum, d) => sum + Math.abs(d.predicted - d.actual), 0) /
+        calibrationData.length
+      : null;
 
   const total = decisionsWithOutcome.length;
   const hasEnoughData = total >= 3;
@@ -37,34 +70,27 @@ export function useInsightEngine(decisions: any[]) {
     const occurred = decisionsWithOutcome.filter(
       (d: any) => d.worstOutcomeOccurred === true
     ).length;
-
     insight = `A pattern is starting to form — in a few recent decisions, what you feared happened ${occurred} time${occurred !== 1 ? "s" : ""}.`;
   }
-
+  // Only use finalized OUTCOME_OPTIONS, REFLECTION_OPTIONS, ATTRIBUTION_OPTIONS for insight logic (no legacy chip labels)
   if (total >= 5) {
     const occurred = decisionsWithOutcome.filter(
       (d: any) => d.worstOutcomeOccurred === true
     ).length;
-
     const sessionRate = occurred / total;
-
     const historicalRate =
       learning.totalDecisions > 5
         ? learning.totalOccurred / learning.totalDecisions
         : null;
-
     // Blend session + history
     const rate = historicalRate
       ? (sessionRate + historicalRate) / 2
       : sessionRate;
-
     // --- Confidence learning signal ---
-
     if (learning.confidenceStats.highConfidenceTotal >= 5) {
       const confidenceRate =
         learning.confidenceStats.highConfidenceOccurred /
         learning.confidenceStats.highConfidenceTotal;
-
       if (confidenceRate > rate + 0.2) {
         confidenceInsight =
           "You tend to feel confident in decisions that don’t always turn out well.";
@@ -73,27 +99,22 @@ export function useInsightEngine(decisions: any[]) {
           "When you feel confident, your decisions tend to work out better than usual.";
       }
     }
-
     // --- Category learning signal ---
     if (learning.categoryStats) {
       let strongestCategory: string | null = null;
       let strongestDiff = 0;
-
       Object.entries(learning.categoryStats).forEach(([cat, stats]: any) => {
         if (stats.total >= 5) {
           const catRate = stats.occurred / stats.total;
-
           if (Math.abs(catRate - rate) > strongestDiff) {
             strongestDiff = Math.abs(catRate - rate);
             strongestCategory = cat;
           }
         }
       });
-
       if (strongestCategory && strongestDiff >= 0.2) {
         const stats = learning.categoryStats[strongestCategory];
         const catRate = stats.occurred / stats.total;
-
         if (catRate > rate) {
           categoryLearningInsight =
             `Your ${strongestCategory} decisions tend to turn out worse than your usual pattern.`;
@@ -103,11 +124,11 @@ export function useInsightEngine(decisions: any[]) {
         }
       }
     }
-
+    // Only use finalized outcome options for insight variants
     if (rate <= 0.25) {
       const variants = [
         `You often expect things to go wrong — but in ${total} decisions, that rarely happened (${occurred}/${total}).`,
-        `You’ve been leaning toward worst-case thinking, even though outcomes rarely support it (${occurred}/${total}).`,
+        `You’ve been leaning toward negative outcomes, even though they rarely occurred (${occurred}/${total}).`,
         `Your expectations seem more cautious than reality — most feared outcomes didn’t happen (${occurred}/${total}).`
       ];
       insight = variants[(total + occurred) % variants.length];
@@ -131,23 +152,30 @@ export function useInsightEngine(decisions: any[]) {
   // --- Secondary behavioral insight (simple heuristic) ---
   if (total >= 3) {
     const texts = decisions
-      .map((d: any) => (d.worstCase || d.title || "").toLowerCase())
+      .map((d: any) => (d.primaryConcern || "").toLowerCase())
       .join(" ");
 
     const score = {
-      regret: (texts.match(/regret|miss|wrong choice/g) || []).length,
+      regret: (texts.match(/regret|miss|wrong choice|not good enough/g) || []).length,
       money: (texts.match(/money|loss|cost|pay/g) || []).length,
       judgment: (texts.match(/people|think|judge|embarrass/g) || []).length,
-      control: (texts.match(/control|uncertain|unknown|risk/g) || []).length,
+      control: (texts.match(/control|uncertain|unknown|risk|too risky|feeling lost/g) || []).length,
     };
+
+    // --- Fear pattern detection (new) ---
+    const fearCount = score.regret + score.control + score.judgment;
+
+    if (fearCount >= 2) {
+      dominantPattern = "You often expect things to go wrong more than they actually do.";
+    }
 
     const top = Object.entries(score).sort((a, b) => b[1] - a[1])[0];
 
     // New: single source of truth for theme
     dominantTheme = top && top[1] > 0 ? (top[0] as string) : null;
 
-    // Dominant Pattern Insight
-    if (top && top[1] > 0) {
+    // Dominant Pattern Insight (do not override stronger patterns like fearCount)
+    if (!dominantPattern && top && top[1] > 0) {
       const recent = decisions.slice(0, 3)
         .map((d: any) => d.title || "")
         .filter(Boolean)
@@ -186,9 +214,7 @@ export function useInsightEngine(decisions: any[]) {
     const occurred = decisionsWithOutcome.filter(
       (d: any) => d.worstOutcomeOccurred === true
     ).length;
-
     const rate = occurred / total;
-
     if (rate <= 0.25) {
       secondaryInsight = "You tend to overestimate how often things go wrong.";
     } else if (rate <= 0.5) {
@@ -203,18 +229,14 @@ export function useInsightEngine(decisions: any[]) {
     const occurred = decisionsWithOutcome.filter(
       (d: any) => d.worstOutcomeOccurred === true
     ).length;
-
     const sessionRate = occurred / total;
-
     const historicalRate =
       learning.totalDecisions > 5
         ? learning.totalOccurred / learning.totalDecisions
         : null;
-
     const rate = historicalRate
       ? (sessionRate + historicalRate) / 2
       : sessionRate;
-
     if (total < 10) {
       if (rate <= 0.25) {
         deepInsight = "You’re often reacting to imagined outcomes more than actual ones.";
@@ -386,7 +408,7 @@ export function useInsightEngine(decisions: any[]) {
 
       // --- Repeated mistake patterns ---
       const recentWorstCases = last3.map((d: any) =>
-        (d.worstCase || "").toLowerCase()
+        (d.primaryConcern || "").toLowerCase()
       );
 
       const duplicates = recentWorstCases.filter(
@@ -401,7 +423,7 @@ export function useInsightEngine(decisions: any[]) {
       // --- Bias loop detection ---
       const fearTexts = decisionsWithOutcome
         .slice(0, 6)
-        .map((d: any) => (d.worstCase || "").toLowerCase());
+        .map((d: any) => (d.primaryConcern || "").toLowerCase());
 
       const loopMatches = fearTexts.filter(
         (item, index) => item && fearTexts.indexOf(item) !== index
@@ -560,7 +582,6 @@ export function useInsightEngine(decisions: any[]) {
   // --- Smart composition layer ---
   // Compose orchestrated outputs
   const rateNow = total > 0 ? occurredNow / total : 0;
-
   if (total >= 5) {
     if (rateNow <= 0.25) {
       actionSuggestion = "Next time: write a quick probability estimate before deciding.";
@@ -568,7 +589,6 @@ export function useInsightEngine(decisions: any[]) {
       actionSuggestion = "Next time: stress-test the worst case and define a fallback.";
     }
   }
-
   // Pattern-specific action (overrides generic if present)
   if (dominantPattern) {
     if (dominantPattern.toLowerCase().includes("money")) {
@@ -581,7 +601,6 @@ export function useInsightEngine(decisions: any[]) {
       actionSuggestion = "Next time: decide with a small step instead of waiting for certainty.";
     }
   }
-
   // Signal-specific action (multi-signal aware)
   const actionSignals = [
     confidenceMismatch && "calibrate your confidence — pause and reassess",
@@ -591,15 +610,12 @@ export function useInsightEngine(decisions: any[]) {
     repeatPattern && "break the loop — try a different response to the same fear",
     biasLoop && "question recurring fears — they may not reflect reality"
   ].filter(Boolean) as string[];
-
   if (actionSignals.length > 0) {
     actionSuggestion = "Next time: " + actionSignals.slice(0, 2).join(" and ") + ".";
   }
-
   // Merge learning with signal-based actions (augment, not replace)
   if (actionSignals.length > 0) {
     const extras: string[] = [];
-
     if (categoryLearningInsight) {
       if (categoryLearningInsight.includes("worse")) {
         extras.push("be more cautious in this type of decision");
@@ -607,7 +623,6 @@ export function useInsightEngine(decisions: any[]) {
         extras.push("trust your approach in this area");
       }
     }
-
     if (confidenceInsight) {
       if (confidenceInsight.includes("don’t always turn out well")) {
         extras.push("double-check decisions you feel very confident about");
@@ -615,7 +630,6 @@ export function useInsightEngine(decisions: any[]) {
         extras.push("lean into decisions where you feel confident");
       }
     }
-
     if (extras.length > 0) {
       // append up to one extra to keep it concise
       actionSuggestion =
@@ -625,7 +639,6 @@ export function useInsightEngine(decisions: any[]) {
         ".";
     }
   }
-
   // Learning-aware action refinement
   if (!actionSignals.length && categoryLearningInsight) {
     if (categoryLearningInsight.includes("worse")) {
@@ -634,7 +647,6 @@ export function useInsightEngine(decisions: any[]) {
       actionSuggestion = "Next time: trust your approach in this area — it tends to work well.";
     }
   }
-
   if (!actionSignals.length && confidenceInsight) {
     if (confidenceInsight.includes("don’t always turn out well")) {
       actionSuggestion = "Next time: pause and double-check decisions you feel very confident about.";
@@ -642,7 +654,6 @@ export function useInsightEngine(decisions: any[]) {
       actionSuggestion = "Next time: lean into decisions where you feel confident — your judgment there is reliable.";
     }
   }
-
   // Trend-aware action (only if no strong signal-based action)
   if (actionSignals.length === 0 && total >= 7) {
     if (trend === "worsening") {
@@ -726,6 +737,103 @@ export function useInsightEngine(decisions: any[]) {
     }
   }
 
+  // --- Calibration insight ---
+  if (avgCalibrationError !== null && avgCalibrationError > 0.3) {
+    finalInsight =
+      (finalInsight || "") +
+      " Your predictions and outcomes are not aligning well — you may be misjudging probabilities.";
+  } else if (avgCalibrationError !== null && avgCalibrationError < 0.15) {
+    finalInsight =
+      (finalInsight || "") +
+      " Your predictions are closely matching reality — your judgment is well calibrated.";
+  }
+
+  // --- Category-specific calibration pattern ---
+  if (learning.calibrationStats && learning.categoryStats) {
+    const categories = Object.entries(learning.categoryStats);
+
+    categories.forEach(([cat, stats]: any) => {
+      if (stats.total >= 5) {
+        const catDecisions = decisionsWithOutcome.filter(
+          (d: any) => (d.category || "").toLowerCase() === cat.toLowerCase()
+        );
+
+        let over = 0;
+        let under = 0;
+        let aligned = 0;
+
+        catDecisions.forEach((d: any) => {
+          const p = d.worstOutcomeProbabilityValue;
+
+          if (typeof p === "number") {
+            if (d.worstOutcomeOccurred) {
+              if (p < 50) under++;
+              else aligned++;
+            } else {
+              if (p > 50) over++;
+              else aligned++;
+            }
+          }
+        });
+
+        const totalCal = over + under + aligned;
+
+        if (totalCal >= 3) {
+          if (over > under && over > aligned) {
+            finalInsight =
+              (finalInsight || "") +
+              ` You tend to overestimate risks in ${cat} decisions.`;
+          } else if (under > over && under > aligned) {
+            finalInsight =
+              (finalInsight || "") +
+              ` You tend to underestimate risks in ${cat} decisions.`;
+          }
+        }
+      }
+    });
+  }
+
+  // --- Archetype + calibration link (lightweight via concern keywords) ---
+  if (decisionsWithOutcome.length >= 5) {
+    const recent = decisionsWithOutcome.slice(0, 6);
+
+    const text = recent
+      .map((d: any) => (d.primaryConcern || "").toLowerCase())
+      .join(" ");
+
+    const fearSignals =
+      (text.match(/risk|uncertain|too risky|rejection|judged|trust/g) || []).length;
+
+    const attachmentSignals =
+      (text.match(/losing|connection|relationship|close|stay/g) || []).length;
+
+    let over = 0;
+    let under = 0;
+
+    recent.forEach((d: any) => {
+      const p = d.worstOutcomeProbabilityValue;
+      if (typeof p === "number") {
+        if (d.worstOutcomeOccurred) {
+          if (p < 50) under++;
+        } else {
+          if (p > 50) over++;
+        }
+      }
+    });
+
+    if (over >= 3 && fearSignals >= 3) {
+      finalInsight =
+        (finalInsight || "") +
+        " This pattern suggests a tendency to expect risk more than evidence supports.";
+    }
+
+    if (under >= 3 && attachmentSignals >= 3) {
+      finalInsight =
+        (finalInsight || "") +
+        " Strong attachment may be causing you to overlook real risks.";
+    }
+  }
+
   // --- Global learning integration (avoid overloading strong insights) ---
   if (finalInsight && !patternBreak) {
     if (confidenceInsight) {
@@ -741,6 +849,7 @@ export function useInsightEngine(decisions: any[]) {
     hasEnoughData,
     finalInsight,
     middleInsight,
-    finalNudge
+    finalNudge,
+    calibrationScore: avgCalibrationError
   };
 }

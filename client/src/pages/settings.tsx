@@ -1,11 +1,25 @@
-import { Shield, Download, Upload, ArrowRight } from "lucide-react";
+import { Shield, Download, Upload, ArrowRight, Wind } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { db } from "@/lib/db";
 
 export default function Settings() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+
+  const [pauseEnabled, setPauseEnabled] = useState(true);
+
+  useEffect(() => {
+    db.getSetting("enablePause", true).then(setPauseEnabled);
+  }, []);
+
+  const togglePause = async () => {
+    const next = !pauseEnabled;
+    setPauseEnabled(next);
+    await db.setSetting("enablePause", next);
+    toast({ title: next ? "Breathing pause enabled" : "Breathing pause disabled" });
+  };
 
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState("");
@@ -28,6 +42,28 @@ export default function Settings() {
           Control your data and privacy.
         </p>
       </header>
+
+      {/* Flow */}
+      <section className="space-y-4">
+        <h2 className="text-sm uppercase tracking-widest text-foreground/80 border-b border-border/60 pb-2">
+          Flow
+        </h2>
+        <button
+          onClick={togglePause}
+          className="w-full flex items-center justify-between p-6 rounded-2xl bg-card border border-border/50"
+        >
+          <div className="flex items-center gap-3">
+            <Wind size={18} className="text-muted-foreground" />
+            <div className="text-left">
+              <p className="text-sm">Breathing pause</p>
+              <p className="text-xs text-muted-foreground font-light">30-second mindful pause before each decision</p>
+            </div>
+          </div>
+          <div className={`w-10 h-6 rounded-full transition-colors relative ${pauseEnabled ? "bg-primary" : "bg-secondary"}`}>
+            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${pauseEnabled ? "translate-x-5" : "translate-x-1"}`} />
+          </div>
+        </button>
+      </section>
 
       {/* Privacy */}
       <section className="space-y-4">

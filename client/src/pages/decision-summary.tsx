@@ -561,11 +561,6 @@ export default function DecisionSummary() {
               ? false
               : false;
 
-      console.log({
-        predicted_probability: decision.worstOutcomeProbability,
-        outcome: isWorseThanExpected
-      });
-
       const updatedDecision: Decision = {
         ...decision,
         ...outcomeData,

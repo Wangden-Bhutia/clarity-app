@@ -150,7 +150,6 @@ export function updateLearningData(decisions: any | any[]) {
       }
 
       const actual = d.worstOutcomeOccurred;
-      console.log("LEARNING DEBUG →", { predicted, actual });
 
       if (!data.archetypeStats[predicted]) {
         data.archetypeStats[predicted] = {

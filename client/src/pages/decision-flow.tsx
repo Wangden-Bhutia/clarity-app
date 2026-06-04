@@ -93,10 +93,19 @@ export default function DecisionFlow() {
   };
 
   const handleSave = async () => {
-    if (!formData.title) {
+    if (!formData.chosenAction) {
       toast({
-        title: "Missing Title",
-        description: "Please provide a brief summary of what you're deciding.",
+        title: "Missing decision",
+        description: "Please describe what action you've decided to take.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.title && !formData.decisionDescription) {
+      toast({
+        title: "Missing context",
+        description: "Please describe the decision or give it a short title.",
         variant: "destructive"
       });
       return;
@@ -123,15 +132,6 @@ export default function DecisionFlow() {
           : formData.worstOutcome && formData.worstOutcome.trim().length > 0
           ? formData.worstOutcome.split(".")[0].trim().slice(0, 80)
           : "";
-
-      console.log("DEBUG primaryConcern:", {
-        formPrimary: formData.primaryConcern,
-        fears: formData.fears,
-        worstOutcome: formData.worstOutcome,
-        computed: computedPrimaryConcern
-      });
-
-      // formData.primaryConcern = computedPrimaryConcern;
 
       const newDecision: Decision = {
         id: generateId(),

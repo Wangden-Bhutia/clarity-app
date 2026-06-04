@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Moon, Sun, Home, Book, Settings } from "lucide-react";
+import { Moon, Sun, Home, Book, Settings, BarChart2 } from "lucide-react";
 import { db } from "@/lib/db";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -73,6 +73,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <Link href="/journal" className={`flex flex-col items-center ${location === '/journal' ? 'text-primary' : ''}`}>
             <Book size={20} />
             <span className="text-[10px]">Journal</span>
+          </Link>
+
+          <Link href="/dashboard" className={`flex flex-col items-center ${location === '/dashboard' ? 'text-primary' : ''}`}>
+            <BarChart2 size={20} />
+            <span className="text-[10px]">Insights</span>
           </Link>
 
           <Link href="/settings" className={`flex flex-col items-center ${location === '/settings' ? 'text-primary' : ''}`}>

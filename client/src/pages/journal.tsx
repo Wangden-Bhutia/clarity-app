@@ -1,7 +1,7 @@
 import { useInsightEngine } from "@/lib/insightEngine";
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Search, Circle, CheckCircle2 } from "lucide-react";
+import { Search, Circle, CheckCircle2, BookOpen, ArrowRight } from "lucide-react";
 import { db, Decision } from "@/lib/db";
 export default function Journal() {
   const [decisions, setDecisions] = useState<Decision[]>([]);
@@ -116,20 +116,6 @@ export default function Journal() {
           )}
         </div>
       )}
-      {decisions.length === 0 && (
-        <div className="mt-2 px-4 py-4 rounded-2xl bg-secondary/30 border border-border/50 space-y-3">
-          <p className="text-sm text-foreground/80 font-light leading-relaxed">
-            Start with one decision you’re unsure about.
-          </p>
-          <button
-            onClick={() => (window.location.href = "/framework-flow")}
-            className="px-4 py-2 rounded-full bg-primary/10 text-primary text-xs active:scale-[0.97] transition-all"
-          >
-            Log first decision
-          </button>
-        </div>
-      )}
-
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={16} />
@@ -186,11 +172,31 @@ export default function Journal() {
       )}
 
 
-      {/* Empty */}
-      {filteredDecisions.length === 0 && decisions.length === 0 && (
-        <div className="text-center py-16 px-6">
-          <p className="text-sm text-muted-foreground/80 mb-3 leading-relaxed">
-            This is where your decisions start to reveal patterns.
+      {/* Empty state — no decisions at all */}
+      {decisions.length === 0 && (
+        <div className="flex flex-col items-center justify-center text-center py-16 px-6 gap-6">
+          <div className="w-14 h-14 rounded-full bg-primary/8 flex items-center justify-center">
+            <BookOpen size={24} className="text-primary/50" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-lg font-serif text-foreground/80">No decisions yet</p>
+            <p className="text-sm text-muted-foreground font-light leading-relaxed max-w-xs">
+              Log one decision you're sitting with. Note what you fear might happen — then come back later to see if it did.
+            </p>
+          </div>
+          <Link href="/framework-flow">
+            <div className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground text-sm tracking-wide">
+              Log your first decision <ArrowRight size={15} />
+            </div>
+          </Link>
+        </div>
+      )}
+
+      {/* Empty state — filtered search has no results */}
+      {filteredDecisions.length === 0 && decisions.length > 0 && (
+        <div className="text-center py-12 px-6">
+          <p className="text-sm text-muted-foreground/70 font-light">
+            No decisions match your current filter.
           </p>
         </div>
       )}

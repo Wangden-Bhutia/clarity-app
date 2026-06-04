@@ -19,6 +19,11 @@ export interface Decision {
   confidenceRating: number;
   reviewDate?: number;
   date: number; // timestamp
+
+  // Risk assessment
+  worstOutcomeProbability?: number;     // 0–100 slider value (step 25 in DecisionFlow, step 10 in FrameworkFlow)
+  worstOutcomeProbabilityValue?: number; // same value aliased for FrameworkFlow path
+  worstCase?: string;                   // chip-selected worst-case label (FrameworkFlow)
   
   // Outcomes
   outcomeStatus: 'pending' | 'recorded';
@@ -31,6 +36,10 @@ export interface Decision {
   outcomeEvaluation?: 'Better than expected' | 'As expected' | 'Worse than expected';
   worstOutcomeOccurred?: boolean;
   longTermOutcomeReflection?: string;
+
+  // Pre-save insight (FrameworkFlow)
+  preInsight?: string;
+  preInsightArchetype?: { title: string; summary: string; coaching: string };
 }
 
 interface ClarityDB extends DBSchema {
@@ -92,7 +101,6 @@ export const db = {
       primaryArchetype: decision.primaryArchetype,
     };
 
-    console.log("DB SAVING PRIMARY:", normalizedDecision.primaryArchetype);
     await db.put('decisions', normalizedDecision);
   },
   

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { hashPin } from "@/lib/pinHash";
 
 interface PinLockProps {
   onUnlock: () => void;
@@ -25,13 +26,12 @@ export default function PinLock({ onUnlock }: PinLockProps) {
     if (pin.length < 4) {
       const newPin = pin + num;
       setPin(newPin);
-      
-      if (newPin.length === 4) {
-        if (storedPin) {
-          if (newPin === storedPin) {
-            setPin(""); // clear immediately to prevent second UI state
+
+      if (newPin.length === 4 && storedPin) {
+        hashPin(newPin).then((hashed) => {
+          if (hashed === storedPin) {
+            setPin("");
             onUnlock();
-            return;
           } else {
             toast({
               title: "Incorrect PIN",
@@ -40,7 +40,7 @@ export default function PinLock({ onUnlock }: PinLockProps) {
             });
             setTimeout(() => setPin(""), 500);
           }
-        }
+        });
       }
     }
   };

@@ -50,10 +50,10 @@ export default function QuickFlow() {
         decisionDescription: formData.decisionDescription,
         title: formData.decisionDescription.split('.')[0].substring(0, 50) + (formData.decisionDescription.length > 50 ? '...' : ''),
         primaryConcern: cleanedConcern,
-        worstOutcome: cleanedConcern,
         worstOutcomeProbability: formData.worstOutcomeProbability,
         category: "Other",
         options: "",
+        hopes: "",
         gutFeeling: "",
         recoveryPlan: "",
         chosenAction: "To be determined...",
@@ -61,7 +61,6 @@ export default function QuickFlow() {
         date: Date.now(),
         outcomeStatus: 'pending'
       };
-      console.log("PRIMARY CONCERN BEING SAVED:", cleanedConcern);
       await db.saveDecision(newDecision);
       
       toast({

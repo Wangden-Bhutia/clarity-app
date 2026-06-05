@@ -82,31 +82,22 @@ export default function FrameworkFlow() {
     if (!formData.worstOutcomeProbability) return;
 
     try {
-      // Map framework-specific fields back to our standard Decision interface
-      let options = formData.options;
-      let fears = "";
-      let hopes = "";
-      let recoveryPlan = "";
-      let gutFeeling = formData.gutFeeling;
-      let worstOutcome = formData.worstCase || "";
-
-
-      const primaryConcern = worstOutcome;
+      const primaryConcern = formData.worstCase || "";
       const newDecision: Decision = {
         id: generateId(),
         decisionDescription: formData.decisionDescription,
         title: formData.decisionDescription.split('.')[0].substring(0, 50) + (formData.decisionDescription.length > 50 ? '...' : ''),
         primaryConcern,
+        worstCase: formData.worstCase,
         worryNote: formData.worryNote,
         worstOutcomeProbability: formData.worstOutcomeProbability,
         worstOutcomeProbabilityValue: formData.worstOutcomeProbability,
         category: "Framework",
-        options,
-        fears,
-        hopes,
-        gutFeeling,
+        options: formData.options,
+        hopes: "",
+        gutFeeling: formData.gutFeeling,
         pullNote: formData.pullNote,
-        recoveryPlan,
+        recoveryPlan: "",
         chosenAction: formData.chosenAction,
         actionNote: formData.actionNote,
         confidenceRating: formData.confidenceRating,
@@ -144,7 +135,17 @@ export default function FrameworkFlow() {
       newDecision.primaryArchetype = primary;
 
       const insight = getArchetypeInsight({ primary, secondary }, formData.decisionCategory, formData.worstCase);
-      newDecision.preInsight = `${insight.title}||${insight.mainLine} ${insight.deepLine}`;
+
+      // Store as structured object (used by ClarityInsightBlock)
+      newDecision.preInsightArchetype = {
+        title: insight.title,
+        summary: insight.mainLine,
+        coaching: insight.deepLine
+      };
+
+      // Keep legacy string as fallback for old records
+      newDecision.preInsight = `${insight.title}||${insight.mainLine}||${insight.deepLine}`;
+
       await db.saveDecision(newDecision);
 
       // Cleanup draft after save

@@ -143,18 +143,26 @@ function ClarityInsightBlock({
   decision,
   patternInsight,
   outcomePatternInsight,
-  archetypeInsight
 }: {
   decision: Decision;
   patternInsight: string | null;
   outcomePatternInsight: OutcomePatternInsight;
-  archetypeInsight?: {
-    title: string;
-    summary: string;
-    coaching: string;
-  };
 }) {
-  const preInsightParts = decision.preInsight?.split("||") || [];
+  // Prefer the structured object (new records); fall back to the ||‑split
+  // string for legacy records that pre-date this fix.
+  const structured = decision.preInsightArchetype;
+
+  const legacyParts = decision.preInsight?.split("||") ?? [];
+  const legacyTitle    = legacyParts[0] ?? "";
+  const legacyMainLine = legacyParts[1] ?? "";
+  const legacyDeepLine = legacyParts[2] ?? "";
+
+  // Resolved values — structured wins; legacy is fallback
+  const insightTitle    = structured?.title    ?? legacyTitle;
+  const insightSummary  = structured?.summary  ?? legacyMainLine;
+  const insightCoaching = structured?.coaching ?? legacyDeepLine;
+
+  const hasInsight = !!(insightSummary || insightCoaching);
 
   if (decision.outcomeStatus !== "recorded") {
     return (
@@ -163,35 +171,43 @@ function ClarityInsightBlock({
           Clarity
         </p>
 
-        <p className="text-sm font-medium text-foreground/80 mb-4 leading-relaxed">
-          {archetypeInsight?.summary || preInsightParts[0] || "Clarity Insight"}
-        </p>
+        {hasInsight ? (
+          <>
+            {/* Main insight line */}
+            <p className="text-sm font-medium text-foreground/80 mb-4 leading-relaxed">
+              {insightSummary}
+            </p>
 
-        {archetypeInsight && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-background/60 border border-primary/20">
-            <p className="text-[10px] uppercase tracking-widest text-primary/70 mb-1">
-              {archetypeInsight.title}
-            </p>
-            <p className="text-xs font-medium text-foreground/90">
-              {archetypeInsight.coaching}
-            </p>
-          </div>
-        )}
+            {/* Archetype label + coaching question */}
+            {insightCoaching && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-background/60 border border-primary/20">
+                {insightTitle && (
+                  <p className="text-[10px] uppercase tracking-widest text-primary/70 mb-1">
+                    {insightTitle}
+                  </p>
+                )}
+                <p className="text-xs font-medium text-foreground/90">
+                  {insightCoaching}
+                </p>
+              </div>
+            )}
 
-        {!archetypeInsight && patternInsight && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-background/60 border border-primary/20">
-            <p className="text-[10px] uppercase tracking-widest text-primary/70 mb-1">
-              Your Pattern
-            </p>
-            <p className="text-xs font-medium text-foreground/90">
-              {patternInsight}
-            </p>
-          </div>
-        )}
-
-        {!archetypeInsight && (
-          <p className="text-xs font-normal text-foreground/75 leading-relaxed">
-            {preInsightParts[1] || ""}
+            {/* Cross-decision pattern from calibration history */}
+            {patternInsight && (
+              <div className="mt-2 px-3 py-2 rounded-lg bg-background/40 border border-primary/10">
+                <p className="text-[10px] uppercase tracking-widest text-primary/60 mb-1">
+                  Your Pattern
+                </p>
+                <p className="text-xs text-foreground/70">
+                  {patternInsight}
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          // No insight available (e.g. very old record with no preInsight at all)
+          <p className="text-sm text-muted-foreground font-light">
+            Log the outcome later to unlock your calibration insight.
           </p>
         )}
       </div>
@@ -656,8 +672,6 @@ export default function DecisionSummary() {
     fearProfile
   });
 
-  const archetypeInsight = decision.preInsightArchetype || undefined;
-
   return (
     <div className="w-full max-w-4xl mx-auto px-0.5 sm:px-4 py-10 space-y-6 animate-fade-in-slow pb-24">
       <Link
@@ -671,7 +685,7 @@ export default function DecisionSummary() {
         <div className="space-y-4 p-0.5 sm:p-4 rounded-2xl bg-card/40 border border-border/40 shadow-sm w-full">
           <div className="space-y-2 mb-4">
             <div className="mt-4 ml-4 text-xs text-muted-foreground/70 flex items-center gap-2">
-              <Calendar size={12} /> 
+              <Calendar size={12} />
               <span>{dateStr}</span>
               <span className="text-muted-foreground/40">•</span>
               <span>{getRelativeTime(decision.date)}</span>
@@ -684,7 +698,6 @@ export default function DecisionSummary() {
             decision={decision}
             patternInsight={patternInsight}
             outcomePatternInsight={outcomePatternInsight}
-            archetypeInsight={archetypeInsight}
           />
           <div className="flex flex-col gap-4 mt-4 pt-2 border-t border-border/40">
             <div className="flex items-center gap-2 text-sm tracking-widest uppercase">

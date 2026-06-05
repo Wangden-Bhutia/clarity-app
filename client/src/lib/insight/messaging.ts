@@ -232,11 +232,21 @@ export function getPredictiveInsight(params: {
 }
 
 export function getArchetypeInsight(
-  input: { primary: InsightArchetype; secondary: InsightArchetype | null },
+  input: { primary: InsightArchetype | "low_signal"; secondary: InsightArchetype | null },
   category?: string,
   primaryConcern?: string
 ) {
   const { primary, secondary } = input;
+
+  // Not enough signal to classify confidently
+  if (primary === "low_signal") {
+    return {
+      title: "Reflect",
+      mainLine: "There isn't enough signal yet to identify a clear pattern in this decision.",
+      deepLine: "Notice what feels most uncertain — that is often where the real question lives."
+    };
+  }
+
   const mapConcern = (c?: string) => {
     const t = c?.toLowerCase();
     if (t === "too risky") return "this is too risky";

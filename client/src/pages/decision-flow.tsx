@@ -5,6 +5,8 @@ import { db, Decision } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 import { getPreDecisionNudge } from "@/lib/nudge";
+import resolveArchetype from "@/lib/insight/resolver";
+import { getArchetypeInsight } from "@/lib/insight/messaging";
 
 // Generate a random ID since we aren't using uuid directly to avoid dependencies
 const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -133,10 +135,57 @@ export default function DecisionFlow() {
           ? formData.worstOutcome.split(".")[0].trim().slice(0, 80)
           : "";
 
+      // Map probability slider (0–100, step 25) to resolver's label
+      const probabilityMap: Record<number, string> = {
+        0:   "Very Unlikely",
+        25:  "Unlikely",
+        50:  "Uncertain",
+        75:  "Likely",
+        100: "Very Likely"
+      };
+      const probabilityLabel =
+        probabilityMap[formData.worstOutcomeProbability] ?? "Uncertain";
+
+      // Map category to resolver's expected key
+      const categoryMap: Record<string, string> = {
+        Career:            "Career",
+        Relationships:     "Relationships",
+        Financial:         "Finances",
+        Health:            "Health",
+        "Living Situation":"Lifestyle",
+        Other:             ""
+      };
+      const resolverCategory = categoryMap[formData.category] ?? formData.category;
+
+      const { primary, secondary } = resolveArchetype({
+        category:    resolverCategory,
+        worry:       computedPrimaryConcern || formData.fears,
+        pull:        formData.gutFeeling,
+        action:      formData.chosenAction,
+        importance:  formData.importanceLevel === "Major" ? "Life-Changing"
+                   : formData.importanceLevel === "High"  ? "High Stakes"
+                   : formData.importanceLevel === "Medium"? "Moderate"
+                   : "Low Impact",
+        probability: probabilityLabel
+      });
+
+      const insight = getArchetypeInsight(
+        { primary, secondary },
+        resolverCategory,
+        computedPrimaryConcern
+      );
+
       const newDecision: Decision = {
         id: generateId(),
         ...decisionData,
         primaryConcern: computedPrimaryConcern,
+        primaryArchetype: primary,
+        preInsightArchetype: {
+          title:    insight.title,
+          summary:  insight.mainLine,
+          coaching: insight.deepLine
+        },
+        preInsight: `${insight.title}||${insight.mainLine}||${insight.deepLine}`,
         reviewDate,
         date: Date.now(),
         outcomeStatus: 'pending'

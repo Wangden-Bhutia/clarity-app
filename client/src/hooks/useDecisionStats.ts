@@ -23,7 +23,7 @@ export function useDecisionStats() {
         };
 
         withOutcomes.forEach(d => {
-          const text = (d.fears || d.worstCase || "").toLowerCase();
+          const text = (d.primaryConcern || d.worstCase || "").toLowerCase();
 
           if (text.includes("judge") || text.includes("people")) counts.judgment++;
           if (text.includes("money") || text.includes("loss")) counts.money++;

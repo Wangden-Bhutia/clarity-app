@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, ArrowRight, CheckCircle, Save } from "lucide-react";
 import { db, Decision } from "@/lib/db";
-import { v4 as uuidv4 } from "uuid";
 import { useToast } from "@/hooks/use-toast";
 import { getPreDecisionNudge } from "@/lib/nudge";
 import resolveArchetype from "@/lib/insight/resolver";

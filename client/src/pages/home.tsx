@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Link } from "wouter";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, AlignLeft } from "lucide-react";
 import DailyPredictionWidget from "@/components/daily-prediction-widget";
 
 export default function Home() {
@@ -32,14 +32,23 @@ export default function Home() {
         </p>
 
         
-        <div className="flex items-center justify-center mb-4">
+        {/* Primary CTA */}
+        <div className="flex items-center justify-center mb-2">
           <Link href="/framework-flow">
-            <div className="flex items-center justify-center gap-4 bg-primary text-primary-foreground px-8 py-4 rounded-full cursor-pointer">
+            <div className="flex items-center justify-center gap-3 bg-primary text-primary-foreground px-8 py-4 rounded-full cursor-pointer">
               <span className="tracking-wide uppercase text-sm">Gain Clarity</span>
               <ArrowRight size={18} />
             </div>
           </Link>
         </div>
+
+        {/* Secondary: step-by-step deep flow */}
+        <Link href="/flow">
+          <div className="flex items-center gap-2 text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer py-1">
+            <AlignLeft size={14} />
+            <span className="text-xs tracking-wide">Step-by-step reflection</span>
+          </div>
+        </Link>
 
         <div className="w-full max-w-lg mx-auto pb-4">
           <DailyPredictionWidget />

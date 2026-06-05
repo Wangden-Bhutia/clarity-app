@@ -10,8 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import TruthReveal from "@/components/truth-reveal";
 import OutcomeModal from "@/components/OutcomeModal";
 import { getOutcomePatternInsight } from "@/lib/insight/messaging";
-import { DECISION_CATEGORIES } from '@/lib/chipReference';
-import { OUTCOME_OPTIONS, REFLECTION_OPTIONS, ATTRIBUTION_OPTIONS } from '@/components/outcomeModal.config';
 
 // =============================
 // Types
@@ -26,49 +24,25 @@ type OutcomePatternInsight = {
   deepLine: string;
 };
 
-type OutcomeEditingState = {
-  isEditingOutcome: boolean;
-  setIsEditingOutcome: React.Dispatch<React.SetStateAction<boolean>>;
-  isFocused: boolean;
-  setIsFocused: React.Dispatch<React.SetStateAction<boolean>>;
-};
-
 type OutcomeHandlers = {
   outcomeData: DecisionSummaryOutcomeData;
   setOutcomeData: React.Dispatch<React.SetStateAction<DecisionSummaryOutcomeData>>;
-  handleOutcomeChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLSelectElement>) => void;
   saveOutcome: () => void;
 };
 
-
 type DecisionInsightsInput = {
   decision: Decision;
-  calibrationScore: number | null;
-  recentStats: { occurred: number; total: number } | null;
   primaryConcernStats: { occurred: number; total: number } | null;
   fearProfile: Parameters<typeof getOutcomePatternInsight>[0]["fearProfile"];
 };
 
 type OutcomeSectionProps = {
-  decision: Decision;
-  primaryConcernStats: { occurred: number; total: number } | null;
-  editing: OutcomeEditingState;
   outcome: OutcomeHandlers;
 };
 
 // =============================
 // Utilities / Helpers
 // =============================
-function useBodyScrollLock(isLocked: boolean) {
-  useEffect(() => {
-    document.body.style.overflow = isLocked ? "hidden" : "";
-
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isLocked]);
-}
-
 function getRelativeTime(timestamp: number) {
   const diff = Date.now() - timestamp;
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -431,7 +405,6 @@ function buildDecisionInsights({
   primaryConcernStats,
   fearProfile
 }: DecisionInsightsInput) {
-  void decision;
   const patternInsight = (() => {
     if (!primaryConcernStats || primaryConcernStats.total < 3) return null;
 
@@ -455,15 +428,7 @@ function buildDecisionInsights({
   };
 }
 
-function OutcomeSectionBlock({
-  decision,
-  primaryConcernStats,
-  editing,
-  outcome
-}: OutcomeSectionProps) {
-  void decision;
-  void primaryConcernStats;
-  void editing;
+function OutcomeSectionBlock({ outcome }: OutcomeSectionProps) {
   return (
     <div className="mt-7 border-t border-border pt-7">
       <div className="px-4 py-3 rounded-2xl border border-primary/15 bg-card/20 text-center">
@@ -473,17 +438,11 @@ function OutcomeSectionBlock({
         <p className="text-xs font-light text-muted-foreground/60 mb-4">
           When this plays out, come back and reflect.
         </p>
-        {/* Centered sage pill Record Outcome button via OutcomeModal's trigger */}
         <div className="flex justify-center py-4">
           <OutcomeModal
             outcomeData={outcome.outcomeData}
             setOutcomeData={outcome.setOutcomeData}
-            handleOutcomeChange={outcome.handleOutcomeChange}
             saveOutcome={outcome.saveOutcome}
-            OUTCOME_OPTIONS={OUTCOME_OPTIONS}
-            REFLECTION_OPTIONS={REFLECTION_OPTIONS}
-            ATTRIBUTION_OPTIONS={ATTRIBUTION_OPTIONS}
-            DECISION_CATEGORIES={DECISION_CATEGORIES}
           />
         </div>
       </div>
@@ -502,12 +461,10 @@ export default function DecisionSummary() {
   const [decision, setDecision] = useState<Decision | null>(null);
   const [allDecisions, setAllDecisions] = useState<Decision[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditingOutcome, setIsEditingOutcome] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTruthReveal, setShowTruthReveal] = useState(false);
 
-  
   const [outcomeData, setOutcomeData] = useState<DecisionSummaryOutcomeData>({
     outcomeResult: "",
     surprises: "",
@@ -516,9 +473,7 @@ export default function DecisionSummary() {
     worstOutcomeOccurred: false,
     longTermOutcomeReflection: ""
   });
-  const [isFocused, setIsFocused] = useState(false);
-  useBodyScrollLock(isEditingOutcome || isFocused);
-  const { primaryConcernStats, fearProfile, recentStats } = useDecisionStats();
+  const { fearStats: primaryConcernStats, fearProfile } = useDecisionStats();
   const { calibrationScore } = useInsightEngine(allDecisions);
   useEffect(() => {
     const hydratePage = async () => {
@@ -555,15 +510,6 @@ export default function DecisionSummary() {
     hydratePage();
   }, [params?.id]);
 
-  const handleOutcomeChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    if (name === "worstOutcomeOccurred") {
-      setOutcomeData(prev => ({ ...prev, worstOutcomeOccurred: value === "true" }));
-    } else {
-      setOutcomeData(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
   const saveOutcome = async () => {
     if (!decision) return;
     
@@ -596,7 +542,6 @@ export default function DecisionSummary() {
       };
       setDecision(normalized);
       
-      setIsEditingOutcome(false);
       setShowTruthReveal(true);
     } catch (error) {
       toast({
@@ -666,10 +611,8 @@ export default function DecisionSummary() {
     outcomePatternInsight
   } = buildDecisionInsights({
     decision,
-    calibrationScore,
-    recentStats,
     primaryConcernStats,
-    fearProfile
+    fearProfile: fearProfile ?? undefined
   });
 
   return (
@@ -760,18 +703,9 @@ export default function DecisionSummary() {
       {/* Outcome Section */}
       {decision.outcomeStatus !== 'recorded' && (
         <OutcomeSectionBlock
-          decision={decision}
-          primaryConcernStats={primaryConcernStats}
-          editing={{
-            isEditingOutcome,
-            setIsEditingOutcome,
-            isFocused,
-            setIsFocused
-          }}
           outcome={{
             outcomeData,
             setOutcomeData,
-            handleOutcomeChange,
             saveOutcome
           }}
         />
@@ -798,7 +732,7 @@ export default function DecisionSummary() {
       {showTruthReveal && (
         <TruthReveal
           occurred={decision.worstOutcomeOccurred || false}
-          profile={fearProfile}
+          profile={(fearProfile as any) ?? undefined}
           onContinue={() => setShowTruthReveal(false)}
         />
       )}

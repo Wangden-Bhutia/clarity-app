@@ -4,7 +4,7 @@ import { UserProfile } from "@/lib/stats";
 
 interface TruthRevealProps {
   occurred: boolean;
-  profile: UserProfile;
+  profile?: UserProfile;
   onContinue: () => void;
 }
 
@@ -33,7 +33,7 @@ export default function TruthReveal({ occurred, profile, onContinue }: TruthReve
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const msg = generateTruthMessage(occurred, profile);
+    const msg = generateTruthMessage(occurred, profile ?? "insufficient_data");
     setMessage("");
 
     const timer1 = setTimeout(() => setMessage(msg), 300);

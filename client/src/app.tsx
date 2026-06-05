@@ -11,7 +11,6 @@ import DecisionFlow from "./pages/decision-flow";
 import QuickFlow from "./pages/quick-flow";
 import FrameworkFlow from "./pages/framework-flow";
 import Journal from "./pages/journal";
-import Timeline from "./pages/timeline";
 import Settings from "./pages/settings";
 import DecisionSummary from "./pages/decision-summary";
 import NotFound from "@/pages/not-found";

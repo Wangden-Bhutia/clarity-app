@@ -1,6 +1,6 @@
 import { useInsightEngine } from "@/lib/insightEngine";
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Search, Circle, CheckCircle2, BookOpen, ArrowRight } from "lucide-react";
 import { db, Decision } from "@/lib/db";
 export default function Journal() {
@@ -8,8 +8,8 @@ export default function Journal() {
   const [filteredDecisions, setFilteredDecisions] = useState<Decision[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const params = new URLSearchParams(window.location.search);
-  const initialFilter = (params.get("filter") as any) || "all";
+  const search = useSearch();
+  const initialFilter = (new URLSearchParams(search).get("filter") as "all" | "pending" | "recorded" | "review") || "all";
   const [statusFilter, setStatusFilter] = useState<
     "all" | "pending" | "recorded" | "review"
   >(initialFilter);

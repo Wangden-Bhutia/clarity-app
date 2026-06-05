@@ -293,151 +293,19 @@ export default function FrameworkFlow() {
         </div>
 
 
+        {/* ── PULL: desire first, before the fear ─────────────────────── */}
         <div className={`p-5 rounded-2xl border shadow-lg space-y-3.5 transition ${
           category
             ? "bg-muted/40 border-border/60"
             : "bg-muted/20 border-border/30 opacity-50 pointer-events-none"
         }`}>
           <h3 className="text-lg font-medium mb-2 border-b border-border/40 pb-2">
-            What feels like the biggest downside here?
+            What’s drawing you toward this?
           </h3>
           <p className="text-xs text-muted-foreground">
-            What could go wrong?
+            What do you hope to gain or feel?
           </p>
-          <div className="grid grid-cols-2 gap-1.5 mb-2.5">
-            {(selectedCategoryConfig?.worries || []).map((chip) => (
-              <button
-                key={chip}
-                onClick={() =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    worstCase: prev.worstCase === chip ? "" : chip
-                  }))
-                }
-                className={`w-full px-3 py-1.5 rounded-full text-xs border transition text-center ${
-                  formData.worstCase === chip
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/50 border-border hover:bg-primary/10"
-                }`}
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpenNotes(prev => ({ ...prev, worry: !prev.worry }))}
-            className="text-xs text-muted-foreground hover:text-foreground transition"
-          >
-            {openNotes.worry ? "Hide note" : <><span className="text-primary">▼</span> Optional note</>}
-          </button>
-
-          {openNotes.worry && (
-            <>
-              <textarea 
-                name="worryNote"
-                value={formData.worryNote}
-                onChange={handleChange}
-                placeholder="Worst case..."
-                maxLength={140}
-                className="w-full p-5 rounded-2xl bg-card border border-border outline-none min-h-[100px]"
-              />
-              <p className="text-[10px] text-muted-foreground text-right mt-1">
-                {formData.worryNote.length}/140
-              </p>
-            </>
-          )}
-        </div>
-
-        <div className={`p-5 rounded-2xl border shadow-lg space-y-3.5 transition ${
-          category
-            ? "bg-muted/40 border-border/60"
-            : "bg-muted/20 border-border/30 opacity-50 pointer-events-none"
-        }`}>
-          <h3 className="text-lg font-medium mb-2 border-b border-border/40 pb-2">
-            Given that, how likely is this to actually happen?
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Just a rough sense—no need to be exact.
-          </p>
-          <div className="grid grid-cols-2 gap-1.5 mb-2.5">
-            {[
-              { label: "Very unlikely", value: 10 },
-              { label: "Unlikely", value: 30 },
-              { label: "Uncertain", value: 50 },
-              { label: "Likely", value: 70 },
-              { label: "Very likely", value: 90 }
-            ].map((chip) => (
-              <button
-                key={chip.label}
-                onClick={() =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    worstOutcomeProbability: chip.value
-                  }))
-                }
-                className={`w-full px-3 py-1.5 rounded-full text-xs border transition text-center ${
-                  formData.worstOutcomeProbability === chip.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/50 border-border hover:bg-primary/10"
-                }`}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className={`p-5 rounded-2xl border shadow-lg space-y-3.5 transition ${
-          category
-            ? "bg-muted/40 border-border/60"
-            : "bg-muted/20 border-border/30 opacity-50 pointer-events-none"
-        }`}>
-          <h3 className="text-lg font-medium mb-2 border-b border-border/40 pb-2">
-            So, how much will this matter in your life?
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            How big will this feel in the long run?
-          </p>
-          <div className="grid grid-cols-2 gap-1.5">
-            {[
-              { label: "Low impact", value: 1 },
-              { label: "Moderate", value: 2 },
-              { label: "High stakes", value: 3 },
-              { label: "Life-changing", value: 4 }
-            ].map((chip) => (
-              <button
-                key={chip.label}
-                onClick={() =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    importance: chip.value
-                  }))
-                }
-                className={`w-full px-3 py-1.5 rounded-full text-xs border transition text-center ${
-                  formData.importance === chip.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/50 border-border hover:bg-primary/10"
-                }`}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className={`p-5 rounded-2xl border shadow-lg space-y-3.5 transition ${
-          category
-            ? "bg-muted/40 border-border/60"
-            : "bg-muted/20 border-border/30 opacity-50 pointer-events-none"
-        }`}>
-          <h3 className="text-lg font-medium mb-2 border-b border-border/40 pb-2">
-            Even so, why does this option feel like a good idea?
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            What’s drawing you toward it?
-          </p>
-          <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+          <div className="grid grid-cols-2 gap-2 mb-2.5">
             {(selectedCategoryConfig?.pulls || []).map((chip) => (
               <button
                 key={chip}
@@ -447,9 +315,9 @@ export default function FrameworkFlow() {
                     gutFeeling: prev.gutFeeling === chip ? "" : chip
                   }))
                 }
-                className={`w-full px-3 py-1.5 rounded-full text-xs border transition text-center ${
+                className={`w-full px-3 py-2 rounded-xl text-xs border transition text-center leading-snug ${
                   formData.gutFeeling === chip
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground border-primary"
                     : "bg-secondary/50 border-border hover:bg-primary/10"
                 }`}
               >
@@ -462,16 +330,15 @@ export default function FrameworkFlow() {
             onClick={() => setOpenNotes(prev => ({ ...prev, gut: !prev.gut }))}
             className="text-xs text-muted-foreground hover:text-foreground transition"
           >
-            {openNotes.gut ? "Hide note" : <><span className="text-primary">▼</span> Optional note</>}
+            {openNotes.gut ? "Hide note" : <><span className="text-primary">▼</span> Add your own</>}
           </button>
-
           {openNotes.gut && (
             <>
-              <textarea 
+              <textarea
                 name="pullNote"
                 value={formData.pullNote}
                 onChange={handleChange}
-                placeholder="Your instinct..."
+                placeholder="What pulls you toward this in your own words..."
                 maxLength={140}
                 className="w-full p-5 rounded-2xl bg-card border border-border outline-none min-h-[100px]"
               />
@@ -482,18 +349,154 @@ export default function FrameworkFlow() {
           )}
         </div>
 
+        {/* ── WORRY: biggest concern ───────────────────────────────────── */}
         <div className={`p-5 rounded-2xl border shadow-lg space-y-3.5 transition ${
           category
             ? "bg-muted/40 border-border/60"
             : "bg-muted/20 border-border/30 opacity-50 pointer-events-none"
         }`}>
           <h3 className="text-lg font-medium mb-2 border-b border-border/40 pb-2">
-            Given all this, what are you leaning toward doing?
+            What’s your biggest concern?
           </h3>
           <p className="text-xs text-muted-foreground">
-            You don’t have to be certain—just your current direction.
+            What might go wrong or hold you back?
           </p>
-          <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+          <div className="grid grid-cols-2 gap-2 mb-2.5">
+            {(selectedCategoryConfig?.worries || []).map((chip) => (
+              <button
+                key={chip}
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    worstCase: prev.worstCase === chip ? "" : chip
+                  }))
+                }
+                className={`w-full px-3 py-2 rounded-xl text-xs border transition text-center leading-snug ${
+                  formData.worstCase === chip
+                    ? "bg-destructive/10 text-destructive border-destructive/30"
+                    : "bg-secondary/50 border-border hover:bg-destructive/5"
+                }`}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpenNotes(prev => ({ ...prev, worry: !prev.worry }))}
+            className="text-xs text-muted-foreground hover:text-foreground transition"
+          >
+            {openNotes.worry ? "Hide note" : <><span className="text-primary">▼</span> Add your own</>}
+          </button>
+          {openNotes.worry && (
+            <>
+              <textarea
+                name="worryNote"
+                value={formData.worryNote}
+                onChange={handleChange}
+                placeholder="What worries you most in your own words..."
+                maxLength={140}
+                className="w-full p-5 rounded-2xl bg-card border border-border outline-none min-h-[100px]"
+              />
+              <p className="text-[10px] text-muted-foreground text-right mt-1">
+                {formData.worryNote.length}/140
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* ── PROBABILITY: calibrate the fear ─────────────────────────── */}
+        <div className={`p-5 rounded-2xl border shadow-lg space-y-3.5 transition ${
+          category
+            ? "bg-muted/40 border-border/60"
+            : "bg-muted/20 border-border/30 opacity-50 pointer-events-none"
+        }`}>
+          <h3 className="text-lg font-medium mb-2 border-b border-border/40 pb-2">
+            How likely is that concern to actually happen?
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            A rough sense is all you need.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Very unlikely", value: 10 },
+              { label: "Unlikely",      value: 30 },
+              { label: "Uncertain",     value: 50 },
+              { label: "Likely",        value: 70 },
+              { label: "Very likely",   value: 90 }
+            ].map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    worstOutcomeProbability: chip.value
+                  }))
+                }
+                className={`w-full px-3 py-2 rounded-xl text-xs border transition text-center ${
+                  formData.worstOutcomeProbability === chip.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary/50 border-border hover:bg-primary/10"
+                }`}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── IMPORTANCE: overall stakes ───────────────────────────────── */}
+        <div className={`p-5 rounded-2xl border shadow-lg space-y-3.5 transition ${
+          category
+            ? "bg-muted/40 border-border/60"
+            : "bg-muted/20 border-border/30 opacity-50 pointer-events-none"
+        }`}>
+          <h3 className="text-lg font-medium mb-2 border-b border-border/40 pb-2">
+            How much does this actually matter to your life?
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Set aside the anxiety — how significant is this really?
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Low impact",     value: 1 },
+              { label: "Moderate",       value: 2 },
+              { label: "High stakes",    value: 3 },
+              { label: "Life-changing",  value: 4 }
+            ].map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    importance: chip.value
+                  }))
+                }
+                className={`w-full px-3 py-2 rounded-xl text-xs border transition text-center ${
+                  formData.importance === chip.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary/50 border-border hover:bg-primary/10"
+                }`}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── ACTION: current direction ────────────────────────────────── */}
+        <div className={`p-5 rounded-2xl border shadow-lg space-y-3.5 transition ${
+          category
+            ? "bg-muted/40 border-border/60"
+            : "bg-muted/20 border-border/30 opacity-50 pointer-events-none"
+        }`}>
+          <h3 className="text-lg font-medium mb-2 border-b border-border/40 pb-2">
+            What are you leaning toward doing?
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            You don’t need to be certain — just your current direction.
+          </p>
+          <div className="grid grid-cols-2 gap-2 mb-2.5">
             {(selectedCategoryConfig?.actions || []).map((chip) => (
               <button
                 key={chip}
@@ -503,9 +506,9 @@ export default function FrameworkFlow() {
                     chosenAction: prev.chosenAction === chip ? "" : chip
                   }))
                 }
-                className={`w-full px-3 py-1.5 rounded-full text-xs border transition text-center ${
+                className={`w-full px-3 py-2 rounded-xl text-xs border transition text-center leading-snug ${
                   formData.chosenAction === chip
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground border-primary"
                     : "bg-secondary/50 border-border hover:bg-primary/10"
                 }`}
               >
@@ -518,16 +521,15 @@ export default function FrameworkFlow() {
             onClick={() => setOpenNotes(prev => ({ ...prev, action: !prev.action }))}
             className="text-xs text-muted-foreground hover:text-foreground transition"
           >
-            {openNotes.action ? "Hide note" : <><span className="text-primary">▼</span> Optional note</>}
+            {openNotes.action ? "Hide note" : <><span className="text-primary">▼</span> Add your own</>}
           </button>
-
           {openNotes.action && (
             <>
-              <textarea 
+              <textarea
                 name="actionNote"
                 value={formData.actionNote}
                 onChange={handleChange}
-                placeholder="You don’t have to be certain… just what feels likely right now."
+                placeholder="Describe what you’re leaning toward..."
                 maxLength={140}
                 className="w-full p-5 rounded-2xl bg-card border border-border outline-none min-h-[100px]"
               />

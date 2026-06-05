@@ -32,17 +32,20 @@ function validateSignalQuality(input: ResolveInput): SignalQuality {
   let confidence = 0;
   let coherence = 0;
   
-  // Signal strength: meaningful content vs generic
-  const meaningfulWords = worryText.split(' ').filter(w => w.length > 3).length;
-  strength = Math.min(meaningfulWords / 5, 1);
-  
-  // Confidence: specificity of language
-  const specificIndicators = [
-    worryText.includes('specific') || worryText.includes('exactly'),
-    pullText.includes('specific') || pullText.includes('exactly'),
-    actionText.includes('will') || actionText.includes('commit')
-  ].filter(Boolean).length;
-  confidence = Math.min(specificIndicators / 2, 1);
+  // Signal strength: meaningful content vs generic.
+  // Single-word chip inputs (e.g. "Burnout", "Growth") are valid — treat any
+  // non-empty word of 3+ chars as sufficient; scale up to 1 for multi-word inputs.
+  const meaningfulWords = worryText.split(' ').filter(w => w.length > 2).length;
+  strength = Math.min(meaningfulWords / 3, 1); // 1 word → 0.33, 2 words → 0.67, 3+ → 1.0
+
+  // Confidence: specificity of language.
+  // Chip-based inputs won't contain 'specific'/'will' — treat non-empty inputs
+  // as moderately confident by default (0.4) and boost for explicit language.
+  const hasExplicitLanguage =
+    worryText.includes('specific') || worryText.includes('exactly') ||
+    pullText.includes('specific')  || pullText.includes('exactly')  ||
+    actionText.includes('will')    || actionText.includes('commit');
+  confidence = hasExplicitLanguage ? 0.8 : 0.4;
   
   // Coherence: alignment between worry, pull, and action
   const hasAllComponents = !!(input.worry && input.pull && input.action);
@@ -835,8 +838,10 @@ export function resolveArchetype({
   const input = { category, worry, pull, action, importance, probability };
   const signalQuality = validateSignalQuality(input);
   
-  // Early return for very weak signals
-  const qualityThreshold = 0.4;
+  // Early return for very weak signals.
+  // Chip-selected inputs are intentionally short (1-2 words) so the threshold
+  // must be low enough to pass them through to the scoring rules.
+  const qualityThreshold = 0.25;
   const avgQuality = (signalQuality.strength + signalQuality.confidence + signalQuality.coherence) / 3;
   
   if (avgQuality < qualityThreshold) {
@@ -965,7 +970,7 @@ export function resolveArchetype({
   }, 0) / Object.keys(scores).length;
 
   // If scores are too clustered and signal quality is low, preserve uncertainty
-  if (scoreVariance < 1.5 && avgQuality < 0.6) {
+  if (scoreVariance < 1.5 && avgQuality < 0.4) {
     return { primary: "low_signal" as any, secondary: null };
   }
 

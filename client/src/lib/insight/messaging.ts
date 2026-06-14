@@ -232,11 +232,21 @@ export function getPredictiveInsight(params: {
 }
 
 export function getArchetypeInsight(
-  input: { primary: InsightArchetype; secondary: InsightArchetype | null },
+  input: { primary: InsightArchetype | "low_signal"; secondary: InsightArchetype | null },
   category?: string,
   primaryConcern?: string
 ) {
   const { primary, secondary } = input;
+
+  // Not enough signal to classify confidently
+  if (primary === "low_signal") {
+    return {
+      title: "Reflect",
+      mainLine: "There isn't enough signal yet to identify a clear pattern in this decision.",
+      deepLine: "Notice what feels most uncertain — that is often where the real question lives."
+    };
+  }
+
   const mapConcern = (c?: string) => {
     const t = c?.toLowerCase();
     if (t === "too risky") return "this is too risky";
@@ -283,6 +293,16 @@ export function getArchetypeInsight(
         };
       }
 
+      if (category === "Family") {
+        return {
+          title: "Fear-Driven",
+          mainLine: primaryConcern
+            ? `Concern about ${mapConcern(primaryConcern)} may be making this feel more dangerous than it actually is.`
+            : "The weight of this decision may be making the risks feel larger than they are.",
+          deepLine: "Check whether what you fear is truly likely—or whether the stakes are amplifying the feeling."
+        };
+      }
+
       return {
         title: "Fear-Driven",
         mainLine: primaryConcern
@@ -300,7 +320,7 @@ export function getArchetypeInsight(
         return {
           title: "Seeking Approval",
           mainLine: "Concern over how you are perceived may be shaping this relationship decision.",
-        deepLine: "Check whether your choice reflects genuine connection—or fear of how you may be judged."
+          deepLine: "Check whether your choice reflects genuine connection—or fear of how you may be judged."
         };
       }
 
@@ -308,14 +328,22 @@ export function getArchetypeInsight(
         return {
           title: "Seeking Approval",
           mainLine: "Part of this career decision may be influenced by how it reflects on you to others.",
-        deepLine: "Check whether you are pursuing what matters to you—or what earns approval."
+          deepLine: "Check whether you are pursuing what matters to you—or what earns approval."
+        };
+      }
+
+      if (category === "Family") {
+        return {
+          title: "Seeking Approval",
+          mainLine: "Part of this may be shaped by not wanting to let others down—or by how you fear being seen.",
+          deepLine: "Check whether this choice comes from your own values—or from managing others' expectations."
         };
       }
 
       return {
         title: "Seeking Approval",
         mainLine: "Part of this decision may be driven by how it reflects on you to others.",
-      deepLine: "Check whether this choice serves your judgment—or your image."
+        deepLine: "Check whether this choice serves your judgment—or your image."
       };
 
     case "scarcity_mindset":
@@ -363,7 +391,7 @@ export function getArchetypeInsight(
         return {
           title: "Inner Conflict",
           mainLine: "This may reflect tension between who you want to become and how you currently see yourself.",
-        deepLine: "Check whether resistance comes from true limitation—or difficulty embracing growth."
+          deepLine: "Check whether resistance comes from true limitation—or difficulty embracing growth."
         };
       }
 
@@ -371,7 +399,7 @@ export function getArchetypeInsight(
         return {
           title: "Inner Conflict",
           mainLine: "Part of this struggle may reflect tension between your intentions and your habits.",
-        deepLine: "Check whether the challenge is the goal itself—or difficulty aligning with it consistently."
+          deepLine: "Check whether the challenge is the goal itself—or difficulty aligning with it consistently."
         };
       }
 
@@ -379,14 +407,22 @@ export function getArchetypeInsight(
         return {
           title: "Inner Conflict",
           mainLine: "This may reflect tension between your ambitions and how ready you feel to pursue them.",
-        deepLine: "Check whether hesitation comes from practical limits—or self-doubt."
+          deepLine: "Check whether hesitation comes from practical limits—or self-doubt."
+        };
+      }
+
+      if (category === "Family") {
+        return {
+          title: "Inner Conflict",
+          mainLine: "This decision may feel difficult because of what it asks you to become — or to give up.",
+          deepLine: "Check whether the resistance comes from genuine doubt—or from the discomfort of changing."
         };
       }
 
       return {
         title: "Inner Conflict",
         mainLine: "This may reflect tension between what feels right to you and what your life currently allows.",
-      deepLine: "Check whether the discomfort comes from the decision—or from feeling out of alignment."
+        deepLine: "Check whether the discomfort comes from the decision—or from feeling out of alignment."
       };
 
     case "ambition_tension":
@@ -410,14 +446,22 @@ export function getArchetypeInsight(
         return {
           title: "Overextended",
           mainLine: "Part of your pressure may come from expecting more of yourself than is sustainable.",
-        deepLine: "Check whether your standards are helping performance—or creating strain."
+          deepLine: "Check whether your standards are helping performance—or creating strain."
+        };
+      }
+
+      if (category === "Family") {
+        return {
+          title: "Overextended",
+          mainLine: "You may be feeling the pull of responsibility alongside doubt about whether you can carry it.",
+          deepLine: "Check whether the pressure comes from genuine commitment—or from taking on more than you can hold."
         };
       }
 
       return {
         title: "Overextended",
         mainLine: "You may feel torn between the desire to grow and the limits of your current capacity.",
-      deepLine: "Check whether the pressure comes from ambition—or from overextension."
+        deepLine: "Check whether the pressure comes from ambition—or from overextension."
       };
 
     case "emotional_attachment":
@@ -452,10 +496,18 @@ export function getArchetypeInsight(
         };
       }
 
+      if (category === "Family") {
+        return {
+          title: "Emotion-Led",
+          mainLine: "Strong feeling about people you care about may be shaping this more than you realize.",
+          deepLine: "Check whether your view is grounded in clear thinking—or being pulled by love or loyalty."
+        };
+      }
+
       return {
         title: "Emotion-Led",
         mainLine: "Strong emotion may be shaping this decision alongside reason.",
-      deepLine: "Check whether your judgment is coming from clarity—or emotional need."
+        deepLine: "Check whether your judgment is coming from clarity—or emotional need."
       };
 
     case "impulse_restlessness":

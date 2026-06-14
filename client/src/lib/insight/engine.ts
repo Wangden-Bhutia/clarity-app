@@ -1,12 +1,8 @@
 import { Decision } from "@/lib/db";
-import {
-  getCalibrationBreakdown,
-  getDominantBias,
-  getBehavioralNudge,
-  getConfidenceInsight
-} from "./core";
+import { getCalibrationBreakdown, getDominantBias, getBehavioralNudge } from "./core";
+import { getConfidenceInsight } from "./messaging";
 import resolveArchetype from "./resolver";
-import { ARCHETYPE_DEFINITIONS } from "./archetypes";
+import { ARCHETYPE_DEFINITIONS, InsightArchetype } from "./archetypes";
 
 export function getDecisionInsights(
   decision: Decision,
@@ -37,19 +33,23 @@ export function getDecisionInsights(
               : "Very Unlikely"
       : undefined;
 
-  const archetype = resolveArchetype({
+  const { primary } = resolveArchetype({
     worry: decision.primaryConcern,
     probability: probabilityLabel
   });
 
-  const archetypeInsight = ARCHETYPE_DEFINITIONS[archetype];
+  // "low_signal" is not a key in ARCHETYPE_DEFINITIONS — guard against it
+  const archetypeInsight =
+    primary !== ("low_signal" as any)
+      ? ARCHETYPE_DEFINITIONS[primary as InsightArchetype]
+      : null;
 
   return {
     calibrationBreakdown,
     dominant,
     nudge,
     confidenceInsight,
-    archetype,
+    archetype: primary,
     archetypeInsight
   };
 }

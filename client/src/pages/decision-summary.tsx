@@ -10,8 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import TruthReveal from "@/components/truth-reveal";
 import OutcomeModal from "@/components/OutcomeModal";
 import { getOutcomePatternInsight } from "@/lib/insight/messaging";
-import { DECISION_CATEGORIES } from '@/lib/chipReference';
-import { OUTCOME_OPTIONS, REFLECTION_OPTIONS, ATTRIBUTION_OPTIONS } from '@/components/outcomeModal.config';
 
 // =============================
 // Types
@@ -26,49 +24,25 @@ type OutcomePatternInsight = {
   deepLine: string;
 };
 
-type OutcomeEditingState = {
-  isEditingOutcome: boolean;
-  setIsEditingOutcome: React.Dispatch<React.SetStateAction<boolean>>;
-  isFocused: boolean;
-  setIsFocused: React.Dispatch<React.SetStateAction<boolean>>;
-};
-
 type OutcomeHandlers = {
   outcomeData: DecisionSummaryOutcomeData;
   setOutcomeData: React.Dispatch<React.SetStateAction<DecisionSummaryOutcomeData>>;
-  handleOutcomeChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLSelectElement>) => void;
   saveOutcome: () => void;
 };
 
-
 type DecisionInsightsInput = {
   decision: Decision;
-  calibrationScore: number | null;
-  recentStats: { occurred: number; total: number } | null;
   primaryConcernStats: { occurred: number; total: number } | null;
   fearProfile: Parameters<typeof getOutcomePatternInsight>[0]["fearProfile"];
 };
 
 type OutcomeSectionProps = {
-  decision: Decision;
-  primaryConcernStats: { occurred: number; total: number } | null;
-  editing: OutcomeEditingState;
   outcome: OutcomeHandlers;
 };
 
 // =============================
 // Utilities / Helpers
 // =============================
-function useBodyScrollLock(isLocked: boolean) {
-  useEffect(() => {
-    document.body.style.overflow = isLocked ? "hidden" : "";
-
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isLocked]);
-}
-
 function getRelativeTime(timestamp: number) {
   const diff = Date.now() - timestamp;
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -143,18 +117,26 @@ function ClarityInsightBlock({
   decision,
   patternInsight,
   outcomePatternInsight,
-  archetypeInsight
 }: {
   decision: Decision;
   patternInsight: string | null;
   outcomePatternInsight: OutcomePatternInsight;
-  archetypeInsight?: {
-    title: string;
-    summary: string;
-    coaching: string;
-  };
 }) {
-  const preInsightParts = decision.preInsight?.split("||") || [];
+  // Prefer the structured object (new records); fall back to the ||‑split
+  // string for legacy records that pre-date this fix.
+  const structured = decision.preInsightArchetype;
+
+  const legacyParts = decision.preInsight?.split("||") ?? [];
+  const legacyTitle    = legacyParts[0] ?? "";
+  const legacyMainLine = legacyParts[1] ?? "";
+  const legacyDeepLine = legacyParts[2] ?? "";
+
+  // Resolved values — structured wins; legacy is fallback
+  const insightTitle    = structured?.title    ?? legacyTitle;
+  const insightSummary  = structured?.summary  ?? legacyMainLine;
+  const insightCoaching = structured?.coaching ?? legacyDeepLine;
+
+  const hasInsight = !!(insightSummary || insightCoaching);
 
   if (decision.outcomeStatus !== "recorded") {
     return (
@@ -163,35 +145,43 @@ function ClarityInsightBlock({
           Clarity
         </p>
 
-        <p className="text-sm font-medium text-foreground/80 mb-4 leading-relaxed">
-          {archetypeInsight?.summary || preInsightParts[0] || "Clarity Insight"}
-        </p>
+        {hasInsight ? (
+          <>
+            {/* Main insight line */}
+            <p className="text-sm font-medium text-foreground/80 mb-4 leading-relaxed">
+              {insightSummary}
+            </p>
 
-        {archetypeInsight && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-background/60 border border-primary/20">
-            <p className="text-[10px] uppercase tracking-widest text-primary/70 mb-1">
-              {archetypeInsight.title}
-            </p>
-            <p className="text-xs font-medium text-foreground/90">
-              {archetypeInsight.coaching}
-            </p>
-          </div>
-        )}
+            {/* Archetype label + coaching question */}
+            {insightCoaching && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-background/60 border border-primary/20">
+                {insightTitle && (
+                  <p className="text-[10px] uppercase tracking-widest text-primary/70 mb-1">
+                    {insightTitle}
+                  </p>
+                )}
+                <p className="text-xs font-medium text-foreground/90">
+                  {insightCoaching}
+                </p>
+              </div>
+            )}
 
-        {!archetypeInsight && patternInsight && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-background/60 border border-primary/20">
-            <p className="text-[10px] uppercase tracking-widest text-primary/70 mb-1">
-              Your Pattern
-            </p>
-            <p className="text-xs font-medium text-foreground/90">
-              {patternInsight}
-            </p>
-          </div>
-        )}
-
-        {!archetypeInsight && (
-          <p className="text-xs font-normal text-foreground/75 leading-relaxed">
-            {preInsightParts[1] || ""}
+            {/* Cross-decision pattern from calibration history */}
+            {patternInsight && (
+              <div className="mt-2 px-3 py-2 rounded-lg bg-background/40 border border-primary/10">
+                <p className="text-[10px] uppercase tracking-widest text-primary/60 mb-1">
+                  Your Pattern
+                </p>
+                <p className="text-xs text-foreground/70">
+                  {patternInsight}
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          // No insight available (e.g. very old record with no preInsight at all)
+          <p className="text-sm text-muted-foreground font-light">
+            Log the outcome later to unlock your calibration insight.
           </p>
         )}
       </div>
@@ -415,7 +405,6 @@ function buildDecisionInsights({
   primaryConcernStats,
   fearProfile
 }: DecisionInsightsInput) {
-  void decision;
   const patternInsight = (() => {
     if (!primaryConcernStats || primaryConcernStats.total < 3) return null;
 
@@ -439,15 +428,7 @@ function buildDecisionInsights({
   };
 }
 
-function OutcomeSectionBlock({
-  decision,
-  primaryConcernStats,
-  editing,
-  outcome
-}: OutcomeSectionProps) {
-  void decision;
-  void primaryConcernStats;
-  void editing;
+function OutcomeSectionBlock({ outcome }: OutcomeSectionProps) {
   return (
     <div className="mt-7 border-t border-border pt-7">
       <div className="px-4 py-3 rounded-2xl border border-primary/15 bg-card/20 text-center">
@@ -457,17 +438,11 @@ function OutcomeSectionBlock({
         <p className="text-xs font-light text-muted-foreground/60 mb-4">
           When this plays out, come back and reflect.
         </p>
-        {/* Centered sage pill Record Outcome button via OutcomeModal's trigger */}
         <div className="flex justify-center py-4">
           <OutcomeModal
             outcomeData={outcome.outcomeData}
             setOutcomeData={outcome.setOutcomeData}
-            handleOutcomeChange={outcome.handleOutcomeChange}
             saveOutcome={outcome.saveOutcome}
-            OUTCOME_OPTIONS={OUTCOME_OPTIONS}
-            REFLECTION_OPTIONS={REFLECTION_OPTIONS}
-            ATTRIBUTION_OPTIONS={ATTRIBUTION_OPTIONS}
-            DECISION_CATEGORIES={DECISION_CATEGORIES}
           />
         </div>
       </div>
@@ -486,12 +461,10 @@ export default function DecisionSummary() {
   const [decision, setDecision] = useState<Decision | null>(null);
   const [allDecisions, setAllDecisions] = useState<Decision[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditingOutcome, setIsEditingOutcome] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showTruthReveal, setShowTruthReveal] = useState(false);
 
-  
   const [outcomeData, setOutcomeData] = useState<DecisionSummaryOutcomeData>({
     outcomeResult: "",
     surprises: "",
@@ -500,9 +473,7 @@ export default function DecisionSummary() {
     worstOutcomeOccurred: false,
     longTermOutcomeReflection: ""
   });
-  const [isFocused, setIsFocused] = useState(false);
-  useBodyScrollLock(isEditingOutcome || isFocused);
-  const { primaryConcernStats, fearProfile, recentStats } = useDecisionStats();
+  const { fearStats: primaryConcernStats, fearProfile } = useDecisionStats();
   const { calibrationScore } = useInsightEngine(allDecisions);
   useEffect(() => {
     const hydratePage = async () => {
@@ -539,15 +510,6 @@ export default function DecisionSummary() {
     hydratePage();
   }, [params?.id]);
 
-  const handleOutcomeChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    if (name === "worstOutcomeOccurred") {
-      setOutcomeData(prev => ({ ...prev, worstOutcomeOccurred: value === "true" }));
-    } else {
-      setOutcomeData(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
   const saveOutcome = async () => {
     if (!decision) return;
     
@@ -560,11 +522,6 @@ export default function DecisionSummary() {
             : outcomeData.outcomeResult === "About As Expected"
               ? false
               : false;
-
-      console.log({
-        predicted_probability: decision.worstOutcomeProbability,
-        outcome: isWorseThanExpected
-      });
 
       const updatedDecision: Decision = {
         ...decision,
@@ -585,7 +542,6 @@ export default function DecisionSummary() {
       };
       setDecision(normalized);
       
-      setIsEditingOutcome(false);
       setShowTruthReveal(true);
     } catch (error) {
       toast({
@@ -655,13 +611,9 @@ export default function DecisionSummary() {
     outcomePatternInsight
   } = buildDecisionInsights({
     decision,
-    calibrationScore,
-    recentStats,
     primaryConcernStats,
-    fearProfile
+    fearProfile: fearProfile ?? undefined
   });
-
-  const archetypeInsight = decision.preInsightArchetype || undefined;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-0.5 sm:px-4 py-10 space-y-6 animate-fade-in-slow pb-24">
@@ -676,7 +628,7 @@ export default function DecisionSummary() {
         <div className="space-y-4 p-0.5 sm:p-4 rounded-2xl bg-card/40 border border-border/40 shadow-sm w-full">
           <div className="space-y-2 mb-4">
             <div className="mt-4 ml-4 text-xs text-muted-foreground/70 flex items-center gap-2">
-              <Calendar size={12} /> 
+              <Calendar size={12} />
               <span>{dateStr}</span>
               <span className="text-muted-foreground/40">•</span>
               <span>{getRelativeTime(decision.date)}</span>
@@ -689,7 +641,6 @@ export default function DecisionSummary() {
             decision={decision}
             patternInsight={patternInsight}
             outcomePatternInsight={outcomePatternInsight}
-            archetypeInsight={archetypeInsight}
           />
           <div className="flex flex-col gap-4 mt-4 pt-2 border-t border-border/40">
             <div className="flex items-center gap-2 text-sm tracking-widest uppercase">
@@ -752,18 +703,9 @@ export default function DecisionSummary() {
       {/* Outcome Section */}
       {decision.outcomeStatus !== 'recorded' && (
         <OutcomeSectionBlock
-          decision={decision}
-          primaryConcernStats={primaryConcernStats}
-          editing={{
-            isEditingOutcome,
-            setIsEditingOutcome,
-            isFocused,
-            setIsFocused
-          }}
           outcome={{
             outcomeData,
             setOutcomeData,
-            handleOutcomeChange,
             saveOutcome
           }}
         />
@@ -790,7 +732,7 @@ export default function DecisionSummary() {
       {showTruthReveal && (
         <TruthReveal
           occurred={decision.worstOutcomeOccurred || false}
-          profile={fearProfile}
+          profile={(fearProfile as any) ?? undefined}
           onContinue={() => setShowTruthReveal(false)}
         />
       )}

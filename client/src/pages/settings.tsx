@@ -1,11 +1,26 @@
-import { Shield, Download, Upload, ArrowRight } from "lucide-react";
+import { Shield, Download, Upload, ArrowRight, Wind } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { db } from "@/lib/db";
+import { hashPin } from "@/lib/pinHash";
 
 export default function Settings() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+
+  const [pauseEnabled, setPauseEnabled] = useState(true);
+
+  useEffect(() => {
+    db.getSetting("enablePause", true).then(setPauseEnabled);
+  }, []);
+
+  const togglePause = async () => {
+    const next = !pauseEnabled;
+    setPauseEnabled(next);
+    await db.setSetting("enablePause", next);
+    toast({ title: next ? "Breathing pause enabled" : "Breathing pause disabled" });
+  };
 
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState("");
@@ -28,6 +43,28 @@ export default function Settings() {
           Control your data and privacy.
         </p>
       </header>
+
+      {/* Flow */}
+      <section className="space-y-4">
+        <h2 className="text-sm uppercase tracking-widest text-foreground/80 border-b border-border/60 pb-2">
+          Flow
+        </h2>
+        <button
+          onClick={togglePause}
+          className="w-full flex items-center justify-between p-6 rounded-2xl bg-card border border-border/50"
+        >
+          <div className="flex items-center gap-3">
+            <Wind size={18} className="text-muted-foreground" />
+            <div className="text-left">
+              <p className="text-sm">Breathing pause</p>
+              <p className="text-xs text-muted-foreground font-light">30-second mindful pause before each decision</p>
+            </div>
+          </div>
+          <div className={`w-10 h-6 rounded-full transition-colors relative ${pauseEnabled ? "bg-primary" : "bg-secondary"}`}>
+            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${pauseEnabled ? "translate-x-5" : "translate-x-1"}`} />
+          </div>
+        </button>
+      </section>
 
       {/* Privacy */}
       <section className="space-y-4">
@@ -86,29 +123,30 @@ export default function Settings() {
         </h2>
 
         <button
-          onClick={() => {
-            const data = localStorage.getItem("decisions");
-            if (!data) return;
-            const blob = new Blob([data], { type: "application/json" });
+          onClick={async () => {
+            const decisions = await db.getAllDecisions();
+            if (!decisions.length) {
+              toast({ title: "Nothing to export", description: "You have no decisions saved yet." });
+              return;
+            }
+            const blob = new Blob([JSON.stringify(decisions, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = "clarity-backup.json";
+            a.download = `clarity-backup-${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
+            URL.revokeObjectURL(url);
+            toast({ title: `Exported ${decisions.length} decision${decisions.length !== 1 ? "s" : ""}` });
           }}
           className="w-full flex items-center justify-between p-6 rounded-2xl bg-card border border-border/50"
         >
-          <>
-            <span>Export Data</span>
-            <Download size={18} />
-          </>
+          <span>Export Data</span>
+          <Download size={18} />
         </button>
 
         <label className="w-full flex items-center justify-between p-6 rounded-2xl bg-card border border-border/50 cursor-pointer">
-          <>
-            <span>Import Data</span>
-            <Upload size={18} />
-          </>
+          <span>Import Data</span>
+          <Upload size={18} />
           <input
             type="file"
             accept="application/json"
@@ -117,9 +155,21 @@ export default function Settings() {
               const file = e.target.files?.[0];
               if (!file) return;
               const reader = new FileReader();
-              reader.onload = () => {
-                localStorage.setItem("decisions", reader.result as string);
-                toast({ title: "Data imported" });
+              reader.onload = async () => {
+                try {
+                  const parsed = JSON.parse(reader.result as string);
+                  const items = Array.isArray(parsed) ? parsed : [];
+                  if (!items.length) {
+                    toast({ title: "Invalid file", description: "No decisions found in this backup.", variant: "destructive" });
+                    return;
+                  }
+                  for (const decision of items) {
+                    await db.saveDecision(decision);
+                  }
+                  toast({ title: `Imported ${items.length} decision${items.length !== 1 ? "s" : ""}` });
+                } catch {
+                  toast({ title: "Import failed", description: "Could not read the backup file.", variant: "destructive" });
+                }
               };
               reader.readAsText(file);
             }}
@@ -204,10 +254,10 @@ export default function Settings() {
           </div>
 
           <button
-            onClick={() => {
+            onClick={async () => {
               if (pinInput.length < 4) return;
 
-              const storedPin = localStorage.getItem("app_pin");
+              const storedHash = localStorage.getItem("app_pin");
 
               // SET PIN
               if (mode === "set") {
@@ -224,7 +274,8 @@ export default function Settings() {
                   return;
                 }
 
-                localStorage.setItem("app_pin", firstPin);
+                const hashed = await hashPin(firstPin);
+                localStorage.setItem("app_pin", hashed);
                 setHasPin(true);
                 toast({ title: "PIN set" });
                 setShowPinModal(false);
@@ -233,7 +284,8 @@ export default function Settings() {
 
               // REMOVE PIN
               if (mode === "remove") {
-                if (pinInput === storedPin) {
+                const hashed = await hashPin(pinInput);
+                if (hashed === storedHash) {
                   localStorage.removeItem("app_pin");
                   setHasPin(false);
                   toast({ title: "PIN removed" });
@@ -247,11 +299,13 @@ export default function Settings() {
               // CHANGE PIN
               if (mode === "change") {
                 if (changePhase === "verify") {
-                  if (pinInput === storedPin) {
+                  const hashed = await hashPin(pinInput);
+                  if (hashed === storedHash) {
                     setChangePhase("new");
                     setPinInput("");
                   } else {
                     toast({ title: "Incorrect PIN", variant: "destructive" });
+                    setPinInput("");
                   }
                   return;
                 }
@@ -270,7 +324,8 @@ export default function Settings() {
                     return;
                   }
 
-                  localStorage.setItem("app_pin", firstPin);
+                  const hashed = await hashPin(firstPin);
+                  localStorage.setItem("app_pin", hashed);
                   toast({ title: "PIN updated" });
                   setShowPinModal(false);
                   return;

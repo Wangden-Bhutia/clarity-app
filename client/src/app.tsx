@@ -11,11 +11,12 @@ import DecisionFlow from "./pages/decision-flow";
 import QuickFlow from "./pages/quick-flow";
 import FrameworkFlow from "./pages/framework-flow";
 import Journal from "./pages/journal";
-import Timeline from "./pages/timeline";
 import Settings from "./pages/settings";
 import DecisionSummary from "./pages/decision-summary";
 import NotFound from "@/pages/not-found";
 import ProfilePage from "./pages/profile";
+import Dashboard from "./pages/dashboard";
+import Onboarding from "./pages/onboarding";
 import PinLock from "./components/pin-lock";
 
 function Router() {
@@ -35,17 +36,17 @@ function Router() {
         const allDecisions = await db.getAllDecisions();
         
         const isFirstLaunch = !hasSeenOnboarding && allDecisions.length === 0;
-        
+
         let isReturningAfterInactivity = false;
         if (lastOpened && hasSeenOnboarding) {
           const daysSinceLastOpen = (now - parseInt(lastOpened)) / (1000 * 60 * 60 * 24);
           isReturningAfterInactivity = daysSinceLastOpen >= 7;
         }
-        
-        // if ((isFirstLaunch || isReturningAfterInactivity)) {
-        //   window.history.replaceState({ isReturning: isReturningAfterInactivity }, '');
-        //   setLocation('/profile');
-        // }
+
+        if (isFirstLaunch || isReturningAfterInactivity) {
+          window.history.replaceState({ isReturning: isReturningAfterInactivity }, '');
+          setLocation('/onboarding');
+        }
 
         const storedPin = localStorage.getItem('app_pin');
         if (storedPin) {
@@ -114,19 +115,28 @@ function Router() {
 
 
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/flow" component={DecisionFlow} />
-        <Route path="/quick-flow" component={QuickFlow} />
-        <Route path="/framework-flow" component={FrameworkFlow} />
-        <Route path="/journal" component={Journal} />
-        <Route path="/decision/:id" component={DecisionSummary} />
-        <Route path="/settings" component={Settings} />
-        <Route path="/profile" component={ProfilePage} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      {/* Full-screen routes — no chrome/nav */}
+      <Route path="/onboarding" component={Onboarding} />
+
+      {/* App routes — inside Layout */}
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/flow" component={DecisionFlow} />
+            <Route path="/quick-flow" component={QuickFlow} />
+            <Route path="/framework-flow" component={FrameworkFlow} />
+            <Route path="/journal" component={Journal} />
+            <Route path="/decision/:id" component={DecisionSummary} />
+            <Route path="/settings" component={Settings} />
+            <Route path="/profile" component={ProfilePage} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 

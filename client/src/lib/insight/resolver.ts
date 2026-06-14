@@ -32,17 +32,20 @@ function validateSignalQuality(input: ResolveInput): SignalQuality {
   let confidence = 0;
   let coherence = 0;
   
-  // Signal strength: meaningful content vs generic
-  const meaningfulWords = worryText.split(' ').filter(w => w.length > 3).length;
-  strength = Math.min(meaningfulWords / 5, 1);
-  
-  // Confidence: specificity of language
-  const specificIndicators = [
-    worryText.includes('specific') || worryText.includes('exactly'),
-    pullText.includes('specific') || pullText.includes('exactly'),
-    actionText.includes('will') || actionText.includes('commit')
-  ].filter(Boolean).length;
-  confidence = Math.min(specificIndicators / 2, 1);
+  // Signal strength: meaningful content vs generic.
+  // Single-word chip inputs (e.g. "Burnout", "Growth") are valid — treat any
+  // non-empty word of 3+ chars as sufficient; scale up to 1 for multi-word inputs.
+  const meaningfulWords = worryText.split(' ').filter(w => w.length > 2).length;
+  strength = Math.min(meaningfulWords / 3, 1); // 1 word → 0.33, 2 words → 0.67, 3+ → 1.0
+
+  // Confidence: specificity of language.
+  // Chip-based inputs won't contain 'specific'/'will' — treat non-empty inputs
+  // as moderately confident by default (0.4) and boost for explicit language.
+  const hasExplicitLanguage =
+    worryText.includes('specific') || worryText.includes('exactly') ||
+    pullText.includes('specific')  || pullText.includes('exactly')  ||
+    actionText.includes('will')    || actionText.includes('commit');
+  confidence = hasExplicitLanguage ? 0.8 : 0.4;
   
   // Coherence: alignment between worry, pull, and action
   const hasAllComponents = !!(input.worry && input.pull && input.action);
@@ -159,13 +162,32 @@ function applyBaseRules(
   }
 }
 
+/**
+ * Normalize new friendly category names to the internal keys the rule
+ * blocks below expect. This lets us rename chips without rewriting every rule.
+ */
+function normalizeCategory(category?: string): string {
+  const map: Record<string, string> = {
+    "Work & Career":       "Career",
+    "Money":               "Finances",
+    "Health & Body":       "Health",
+    "Focus & Habits":      "Productivity",
+    "Life & Environment":  "Lifestyle",
+    "Identity & Growth":   "Personal Growth",
+    // New category — kept distinct so its own rules block can fire
+    "Family & Big Life":   "Family",
+  };
+  return map[category ?? ""] ?? (category ?? "");
+}
+
 function applyCategoryRules(
   scores: ScoreMap,
-  category?: string,
+  rawCategory?: string,
   worry?: string,
   pull?: string,
   action?: string
 ) {
+  const category = normalizeCategory(rawCategory);
   const worryText = normalizeText(worry);
   const pullText = normalizeText(pull);
   const actionText = normalizeText(action);
@@ -711,6 +733,366 @@ function applyCategoryRules(
   ) {
     scores.clear_conviction += 3;
   }
+
+  // ===== NEW CHIP RULES — CAREER =====
+  // "Missing My Window" → strong scarcity signal
+  if (category === "Career" && worryText.includes("missing my window")) {
+    scores.scarcity_mindset += 3;
+  }
+  // "Conflict at Work" → validation_seeking (social tension / perception)
+  if (category === "Career" && worryText.includes("conflict at work")) {
+    scores.validation_seeking += 2;
+    scores.fear_based_avoidance += 1;
+  }
+  // "Regretting Not Trying" → scarcity (fear of missed opportunity)
+  if (category === "Career" && worryText.includes("regretting not trying")) {
+    scores.scarcity_mindset += 3;
+  }
+  // Pull: "Using My Strengths" → clear conviction / ambition
+  if (category === "Career" && pullText.includes("using my strengths")) {
+    scores.ambition_tension += 1;
+    scores.clear_conviction += 1;
+  }
+  // Pull: "Respect & Recognition" → validation_seeking
+  if (category === "Career" && pullText.includes("respect")) {
+    scores.validation_seeking += 1;
+  }
+  // Action: "Make the Move" → forward action = ambition
+  if (category === "Career" && actionText.includes("make the move")) {
+    scores.ambition_tension += 1;
+  }
+  // Action: "Stay Where I Am" → avoidance if paired with fear
+  if (
+    category === "Career" &&
+    actionText.includes("stay where i am") &&
+    (worryText.includes("career risk") || worryText.includes("burning out"))
+  ) {
+    scores.fear_based_avoidance += 2;
+  }
+
+  // ===== NEW CHIP RULES — FINANCES =====
+  // "Going Into Debt" → scarcity mindset
+  if (category === "Finances" && worryText.includes("going into debt")) {
+    scores.scarcity_mindset += 3;
+    scores.fear_based_avoidance += 1;
+  }
+  // "Missing an Opportunity" → scarcity
+  if (category === "Finances" && worryText.includes("missing an opportunity")) {
+    scores.scarcity_mindset += 3;
+  }
+  // Pull: "Status & Image" → validation_seeking
+  if (category === "Finances" && pullText.includes("status")) {
+    scores.validation_seeking += 2;
+  }
+  // Pull: "Enjoying It Now" → impulse restlessness
+  if (category === "Finances" && pullText.includes("enjoying it now")) {
+    scores.impulse_restlessness += 2;
+  }
+  // Action: "Start Small" → clear conviction (measured approach)
+  if (category === "Finances" && actionText.includes("start small")) {
+    scores.clear_conviction += 2;
+  }
+  // Action: "Get Advice First" → deliberate pause = clear conviction
+  if (category === "Finances" && actionText.includes("get advice")) {
+    scores.clear_conviction += 2;
+  }
+
+  // ===== NEW CHIP RULES — HEALTH =====
+  // "Won't Keep It Up" → impulse restlessness (adherence fear)
+  if (category === "Health" && worryText.includes("wont keep it up")) {
+    scores.impulse_restlessness += 3;
+  }
+  // "Not Seeing Results" → impulse restlessness
+  if (category === "Health" && worryText.includes("not seeing results")) {
+    scores.impulse_restlessness += 2;
+    scores.ambition_tension += 1;
+  }
+  // "Pushing Too Hard" → ambition tension
+  if (category === "Health" && worryText.includes("pushing too hard")) {
+    scores.ambition_tension += 3;
+  }
+  // Pull: "Mental Clarity" → clear conviction
+  if (category === "Health" && pullText.includes("mental clarity")) {
+    scores.clear_conviction += 1;
+  }
+  // Pull: "Getting Out of Pain" → clear conviction (motivated by real need)
+  if (category === "Health" && pullText.includes("getting out of pain")) {
+    scores.clear_conviction += 2;
+  }
+  // Action: "Go Slowly" → deliberate pause
+  if (category === "Health" && actionText.includes("go slowly")) {
+    scores.clear_conviction += 1;
+  }
+  // Action: "Recover & Rest" → clear conviction
+  if (category === "Health" && actionText.includes("recover")) {
+    scores.clear_conviction += 1;
+  }
+  // Action: "Seek Help" → neutral / clear conviction
+  if (category === "Health" && actionText.includes("seek help")) {
+    scores.clear_conviction += 1;
+  }
+  // Action: "Stay Consistent" → clear conviction
+  if (category === "Health" && actionText.includes("stay consistent")) {
+    scores.clear_conviction += 2;
+  }
+
+  // ===== NEW CHIP RULES — PRODUCTIVITY =====
+  // "Too Much at Once" → impulse restlessness (overload)
+  if (category === "Productivity" && worryText.includes("too much at once")) {
+    scores.impulse_restlessness += 3;
+  }
+  // "No Real Progress" → impulse restlessness
+  if (category === "Productivity" && worryText.includes("no real progress")) {
+    scores.impulse_restlessness += 2;
+  }
+  // Pull: "Feeling in Control" → clear conviction
+  if (category === "Productivity" && pullText.includes("feeling in control")) {
+    scores.clear_conviction += 1;
+  }
+  // Pull: "Less Guilt" → fear_based_avoidance (avoiding negative state)
+  if (category === "Productivity" && pullText.includes("less guilt")) {
+    scores.fear_based_avoidance += 1;
+  }
+  // Pull: "Proving It to Myself" → identity_conflict
+  if (category === "Productivity" && pullText.includes("proving it")) {
+    scores.identity_conflict += 2;
+    scores.ambition_tension += 1;
+  }
+  // Action: "Start Smaller" → clear conviction (measured)
+  if (category === "Productivity" && actionText.includes("start smaller")) {
+    scores.clear_conviction += 2;
+  }
+  // Action: "Let It Go for Now" → fear_based_avoidance (retreat)
+  if (category === "Productivity" && actionText.includes("let it go")) {
+    scores.fear_based_avoidance += 1;
+  }
+
+  // ===== NEW CHIP RULES — RELATIONSHIPS =====
+  // "Getting Hurt" → fear_based_avoidance + emotional attachment
+  if (category === "Relationships" && worryText.includes("getting hurt")) {
+    scores.fear_based_avoidance += 2;
+    scores.emotional_attachment += 1;
+  }
+  // "Crossing a Line" → fear_based_avoidance (boundary fear)
+  if (category === "Relationships" && worryText.includes("crossing a line")) {
+    scores.fear_based_avoidance += 2;
+    scores.validation_seeking += 1;
+  }
+  // Pull: "Building Something Real" → emotional_attachment + clear conviction
+  if (category === "Relationships" && pullText.includes("building something real")) {
+    scores.emotional_attachment += 1;
+    scores.clear_conviction += 1;
+  }
+  // Pull: "Being Honest" → clear_conviction / identity_conflict
+  if (category === "Relationships" && pullText.includes("being honest")) {
+    scores.clear_conviction += 1;
+    scores.identity_conflict += 1;
+  }
+  // Pull: "Feeling Closer" → emotional attachment
+  if (category === "Relationships" && pullText.includes("feeling closer")) {
+    scores.emotional_attachment += 1;
+  }
+  // Action: "Have the Conversation" → clear conviction
+  if (category === "Relationships" && actionText.includes("have the conversation")) {
+    scores.clear_conviction += 2;
+  }
+  // Action: "Set a Boundary" → fear_based_avoidance + clear conviction
+  if (category === "Relationships" && actionText.includes("set a boundary")) {
+    scores.fear_based_avoidance += 1;
+    scores.clear_conviction += 1;
+  }
+
+  // ===== NEW CHIP RULES — IDENTITY & GROWTH (Personal Growth) =====
+  // "Not Being Ready" → identity_conflict + fear_based_avoidance
+  if (category === "Personal Growth" && worryText.includes("not being ready")) {
+    scores.identity_conflict += 2;
+    scores.fear_based_avoidance += 1;
+  }
+  // "Losing Who I Am" → identity_conflict (strong signal)
+  if (category === "Personal Growth" && worryText.includes("losing who i am")) {
+    scores.identity_conflict += 4;
+  }
+  // "Failing Publicly" → validation_seeking
+  if (category === "Personal Growth" && worryText.includes("failing publicly")) {
+    scores.validation_seeking += 3;
+    scores.fear_based_avoidance += 1;
+  }
+  // Pull: "Becoming Who I Want to Be" → identity_conflict + ambition_tension
+  if (category === "Personal Growth" && pullText.includes("becoming who")) {
+    scores.identity_conflict += 2;
+    scores.ambition_tension += 1;
+  }
+  // Pull: "Not Wasting My Potential" → scarcity_mindset + ambition_tension
+  if (category === "Personal Growth" && pullText.includes("not wasting")) {
+    scores.scarcity_mindset += 2;
+    scores.ambition_tension += 1;
+  }
+  // Pull: "Making an Impact" → ambition_tension
+  if (category === "Personal Growth" && pullText.includes("making an impact")) {
+    scores.ambition_tension += 2;
+  }
+  // Action: "Let Go of What Isn't Working" → clear conviction
+  if (category === "Personal Growth" && actionText.includes("let go of")) {
+    scores.clear_conviction += 2;
+  }
+  // Action: "Give It More Time" → deliberate pause
+  if (category === "Personal Growth" && actionText.includes("give it more time")) {
+    scores.clear_conviction += 1;
+  }
+
+  // ===== NEW CHIP RULES — LIFESTYLE (Life & Environment) =====
+  // "Wrong Place for Me" → identity_conflict + impulse_restlessness
+  if (category === "Lifestyle" && worryText.includes("wrong place for me")) {
+    scores.identity_conflict += 2;
+    scores.impulse_restlessness += 1;
+  }
+  // "Feeling Overwhelmed" → impulse_restlessness
+  if (category === "Lifestyle" && worryText.includes("feeling overwhelmed")) {
+    scores.impulse_restlessness += 2;
+  }
+  // "Won't Feel Right" → identity_conflict
+  if (category === "Lifestyle" && worryText.includes("wont feel right")) {
+    scores.identity_conflict += 2;
+  }
+  // Pull: "Feeling at Home" → clear conviction
+  if (category === "Lifestyle" && pullText.includes("feeling at home")) {
+    scores.clear_conviction += 2;
+  }
+  // Pull: "Space to Breathe" → clear conviction (genuine need)
+  if (category === "Lifestyle" && pullText.includes("space to breathe")) {
+    scores.clear_conviction += 1;
+  }
+  // Action: "Let Go of Something" → clear conviction
+  if (category === "Lifestyle" && actionText.includes("let go of something")) {
+    scores.clear_conviction += 2;
+  }
+  // Action: "Give It More Time" → deliberate pause
+  if (category === "Lifestyle" && actionText.includes("give it more time")) {
+    scores.clear_conviction += 1;
+  }
+
+  // ===== FAMILY & BIG LIFE RULES (new category) =====
+  // Fear: big responsibility → fear_based_avoidance
+  if (
+    category === "Family" &&
+    worryText.includes("too much responsibility")
+  ) {
+    scores.fear_based_avoidance += 2;
+    scores.ambition_tension += 1;
+  }
+  // Fear: wrong timing → scarcity (now-or-never thinking)
+  if (
+    category === "Family" &&
+    worryText.includes("not the right time")
+  ) {
+    scores.scarcity_mindset += 2;
+    scores.fear_based_avoidance += 1;
+  }
+  // Fear: letting someone down → validation_seeking
+  if (
+    category === "Family" &&
+    worryText.includes("letting someone down")
+  ) {
+    scores.validation_seeking += 3;
+  }
+  // Fear: it'll change everything → identity_conflict
+  if (
+    category === "Family" &&
+    worryText.includes("change everything")
+  ) {
+    scores.identity_conflict += 3;
+    scores.fear_based_avoidance += 1;
+  }
+  // Fear: making wrong call → fear_based_avoidance (decisional paralysis)
+  if (
+    category === "Family" &&
+    worryText.includes("making the wrong call")
+  ) {
+    scores.fear_based_avoidance += 3;
+  }
+  // Fear: not being enough → identity_conflict + validation
+  if (
+    category === "Family" &&
+    worryText.includes("not being enough")
+  ) {
+    scores.identity_conflict += 2;
+    scores.validation_seeking += 2;
+  }
+  // Pull: "Being There for People" → emotional_attachment
+  if (
+    category === "Family" &&
+    pullText.includes("being there for people")
+  ) {
+    scores.emotional_attachment += 2;
+  }
+  // Pull: "Creating Something Lasting" → ambition_tension
+  if (
+    category === "Family" &&
+    pullText.includes("creating something lasting")
+  ) {
+    scores.ambition_tension += 2;
+  }
+  // Pull: "Doing the Right Thing" → clear conviction
+  if (
+    category === "Family" &&
+    pullText.includes("doing the right thing")
+  ) {
+    scores.clear_conviction += 2;
+  }
+  // Pull: "Growing Together" → emotional_attachment
+  if (
+    category === "Family" &&
+    pullText.includes("growing together")
+  ) {
+    scores.emotional_attachment += 2;
+  }
+  // Pull: "A Deeper Purpose" → identity_conflict + ambition
+  if (
+    category === "Family" &&
+    pullText.includes("deeper purpose")
+  ) {
+    scores.identity_conflict += 2;
+    scores.ambition_tension += 1;
+  }
+  // Compound: obligation + validation
+  if (
+    category === "Family" &&
+    worryText.includes("letting someone down") &&
+    (actionText.includes("accept it") || actionText.includes("trust the process"))
+  ) {
+    scores.validation_seeking += 2;
+    scores.clear_conviction += 1;
+  }
+  // Compound: identity change + forward action
+  if (
+    category === "Family" &&
+    worryText.includes("change everything") &&
+    actionText.includes("move forward")
+  ) {
+    scores.identity_conflict += 2;
+    scores.ambition_tension += 1;
+  }
+  // Action: "Have the Honest Conversation" → clear conviction
+  if (
+    category === "Family" &&
+    actionText.includes("honest conversation")
+  ) {
+    scores.clear_conviction += 2;
+  }
+  // Action: "Get Clarity First" → deliberate pause
+  if (
+    category === "Family" &&
+    actionText.includes("get clarity first")
+  ) {
+    scores.clear_conviction += 2;
+  }
+  // Action: "Trust the Process" → clear conviction
+  if (
+    category === "Family" &&
+    actionText.includes("trust the process")
+  ) {
+    scores.clear_conviction += 2;
+  }
 }
 
 function applyGenericRules(
@@ -835,8 +1217,10 @@ export function resolveArchetype({
   const input = { category, worry, pull, action, importance, probability };
   const signalQuality = validateSignalQuality(input);
   
-  // Early return for very weak signals
-  const qualityThreshold = 0.4;
+  // Early return for very weak signals.
+  // Chip-selected inputs are intentionally short (1-2 words) so the threshold
+  // must be low enough to pass them through to the scoring rules.
+  const qualityThreshold = 0.25;
   const avgQuality = (signalQuality.strength + signalQuality.confidence + signalQuality.coherence) / 3;
   
   if (avgQuality < qualityThreshold) {
@@ -965,7 +1349,7 @@ export function resolveArchetype({
   }, 0) / Object.keys(scores).length;
 
   // If scores are too clustered and signal quality is low, preserve uncertainty
-  if (scoreVariance < 1.5 && avgQuality < 0.6) {
+  if (scoreVariance < 1.5 && avgQuality < 0.4) {
     return { primary: "low_signal" as any, secondary: null };
   }
 
